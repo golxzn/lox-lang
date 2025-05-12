@@ -1,0 +1,45 @@
+{
+	"folders": [
+		{ "path": "." }
+	],
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "[DBG][CMake] Launch",
+				"type": "cppdbg",
+				"request": "launch",
+				"program": "${command:cmake.launchTargetPath}",
+				"cwd": "${workspaceFolder}",
+				"stopAtEntry": false,
+				"args": [ "assets/test.lox" ],
+				"linux": {
+					"MIMode": "gdb",
+					"miDebuggerPath": "gdb"
+				},
+				"osx": {
+					"MIMode": "lldb",
+					"miDebuggerPath": "lldb-mi"
+				},
+				"windows": {
+					"MIMode": "gdb",
+					"miDebuggerPath": "gdb.exe"
+				},
+			},
+			{
+				"name": "[VSDBG][CMake] Launch",
+				"type": "cppvsdbg",
+				"request": "launch",
+				"program": "${command:cmake.launchTargetPath}",
+				"cwd": "${workspaceFolder}/bin",
+				"args": [ "assets/test.lox" ],
+				"stopAtEntry": false
+			}
+		],
+		"compounds": []
+	},
+	"settings": {
+		"cmake.generator": "Ninja Multi-Config",
+		"cmake.parallelJobs": 12,
+	}
+}

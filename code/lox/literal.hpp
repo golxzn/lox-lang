@@ -1,0 +1,42 @@
+#pragma once
+
+#include <cstdint>
+#include <variant>
+#include <string_view>
+
+namespace lox {
+
+enum class literal_type : uint8_t {
+	null,
+	boolean,
+	number,
+	integral,
+	string
+};
+
+using literal_base = std::variant<std::monostate,
+	bool, double, int64_t, std::string_view
+>;
+
+struct literal : literal_base {
+	using literal_base::variant;
+
+	[[nodiscard]] auto is(literal_type type) const noexcept -> bool;
+	[[nodiscard]] auto type() const noexcept -> literal_type;
+
+	template<class T>
+	[[nodiscard]] auto as() const noexcept -> const T * { return std::get_if<T>(this); }
+
+	template<class T>
+	[[nodiscard]] auto as() noexcept -> T * { return std::get_if<T>(this); }
+
+private:
+	static constexpr auto _id(const literal_type t) noexcept -> size_t {
+		return static_cast<size_t>(t);
+	}
+};
+
+[[nodiscard]] auto to_number_literal(const std::string_view str_value) -> literal;
+[[nodiscard]] auto to_literal(const std::string_view str_value) -> literal;
+
+} // namespace lox

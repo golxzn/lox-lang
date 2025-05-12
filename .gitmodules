@@ -1,0 +1,6 @@
+[submodule "libs/expected"]
+	path = libs/expected
+	url = git@github.com:TartanLlama/expected.git
+[submodule "libs/fast_float"]
+	path = libs/fast_float
+	url = git@github.com:fastfloat/fast_float.git
