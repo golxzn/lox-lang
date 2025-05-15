@@ -48,6 +48,7 @@ private:
 	auto skip_whitespaces(uint32_t position) noexcept -> uint32_t;
 	auto skip_multiline_comment(uint32_t position) noexcept -> uint32_t;
 
+	auto emplace_literal(literal lit, std::vector<literal> &out) -> uint16_t;
 	void make_error_unexpected_symbol(uint32_t pos) const;
 };
 

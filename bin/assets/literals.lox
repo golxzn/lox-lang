@@ -1,0 +1,17 @@
+
+var null_test_0 = null;
+var null_test_1 = null;
+var null_test_2 = null;
+var null_test_3 = null;
+
+var number_test_0 = 123;
+var number_test_1 = 123;
+var number_test_2 = 123;
+var number_test_3 = 123;
+
+var str_test_0 = "";
+var str_test_1 = "";
+var str_test_2 = "";
+var str_test_3 = "hi";
+var str_test_4 = "hi";
+var str_test_5 = "hi";

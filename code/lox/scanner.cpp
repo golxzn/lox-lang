@@ -29,6 +29,13 @@ auto scanner::scan() -> output_type {
 	}
 
 	const auto end_pos{ end_position() };
+	// Common used shit
+	output.literals = std::vector<literal>{
+		{ /*null*/ }, true, false,
+		std::string_view{ "" },
+		double{},
+		int64_t{},
+	};
 
 	m_line = 1u;
 	uint32_t position{};
@@ -149,10 +156,9 @@ auto scanner::parse_string_token(const uint32_t pos, output_type &output) -> uin
 		return skip_till(';', pos + 1);
 	}
 
-	const auto id{ static_cast<uint16_t>(std::size(output.literals)) };
-
+	const auto id{ emplace_literal(m_script.substr(pos + 1u, cur - pos - 1u), output.literals) };
 	output.tokens.emplace_back(pos, id, token_type::string);
-	output.literals.emplace_back(m_script.substr(pos + 1u, cur - pos - 1u));
+
 	m_line += lines_count;
 
 	return cur + 1u;
@@ -174,10 +180,9 @@ auto scanner::parse_number_token(const uint32_t pos, output_type &output) -> uin
 			++cur;
 		}
 	}
-	const auto id{ static_cast<uint16_t>(std::size(output.literals)) };
 
+	const auto id{ emplace_literal(to_number_literal(m_script.substr(pos, cur - pos)), output.literals) };
 	output.tokens.emplace_back(pos, id, token_type::number);
-	output.literals.emplace_back(to_number_literal(m_script.substr(pos, cur - pos)));
 
 	return cur;
 }
@@ -214,28 +219,29 @@ auto scanner::try_parse_null_or_boolean(uint32_t pos, output_type &output) -> st
 
 	const size_t len{ static_cast<size_t>(cur - pos) };
 
-	const auto identifier{ m_script.substr(pos, len) };
-	const auto id{ static_cast<uint16_t>(std::size(output.literals)) };
-	switch (utils::fnv1a(identifier)) {
+	switch (const auto identifier{ m_script.substr(pos, len) }; utils::fnv1a(identifier)) {
 		using namespace utils::fnv1a_literals;
 		case "null"_fnv1a:
-			output.literals.emplace_back();
-			output.tokens.emplace_back(pos, id, token_type::null);
-			return cur;
+			output.tokens.emplace_back(
+				pos, emplace_literal({}, output.literals), token_type::null
+			);
+			break;
 
 		case "true"_fnv1a:
-			output.literals.emplace_back(true);
+			output.tokens.emplace_back(
+				pos, emplace_literal(true, output.literals), token_type::boolean
+			);
 			break;
 
 		case "false"_fnv1a:
-			output.literals.emplace_back(false);
+			output.tokens.emplace_back(
+				pos, emplace_literal(false, output.literals), token_type::boolean
+			);
 			break;
 
 		default:
 			return std::nullopt;
 	}
-
-	output.tokens.emplace_back(pos, id, token_type::boolean);
 
 	return cur;
 }
@@ -269,6 +275,16 @@ auto scanner::skip_multiline_comment(uint32_t pos) noexcept -> uint32_t {
 	}
 
 	return pos;
+}
+
+auto scanner::emplace_literal(literal lit, std::vector<literal> &out) -> uint16_t {
+	if (auto found{ std::ranges::find(out, lit) }; found != std::end(out)) {
+		return static_cast<uint16_t>(std::distance(std::begin(out), found));
+	}
+
+	const auto id{ static_cast<uint16_t>(std::size(out)) };
+	out.emplace_back(std::move(lit));
+	return id;
 }
 
 void scanner::make_error_unexpected_symbol(const uint32_t pos) const {

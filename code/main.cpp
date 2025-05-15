@@ -27,7 +27,7 @@ void print_literal(const lox::literal &lit) {
 			break;
 		case lox::literal_type::string: {
 			const auto str{ *lit.as<std::string_view>() };
-			std::printf(" %.*s", static_cast<int32_t>(std::size(str)), std::data(str));
+			std::printf(R"( "%.*s")", static_cast<int32_t>(std::size(str)), std::data(str));
 		} break;
 		default: break;
 	}
@@ -46,6 +46,13 @@ int evaluate(const std::string_view file_path, const std::string_view script) {
 	errout.export_records([](std::string_view err) {
 		std::printf("%.*s\n", static_cast<int32_t>(std::size(err)), std::data(err));
 	});
+
+	std::printf("\nLiterals:\n");
+	for (size_t i{}; i < std::size(literals); ++i) {
+		std::printf("%.3zu | ", i);
+		print_literal(literals[i]);
+		std::printf("\n");
+	}
 
 	std::printf("\nTokens:\n");
 
