@@ -14,36 +14,39 @@
 void print_literal(const lox::literal &lit) {
 	switch (lit.type()) {
 		case lox::literal_type::null:
-			std::printf("null");
+			std::printf(" null");
 			break;
 		case lox::literal_type::boolean:
-			std::printf("%s", (*lit.as<bool>() ? "true" : "false"));
+			std::printf(" %s", (*lit.as<bool>() ? "true" : "false"));
 			break;
 		case lox::literal_type::number:
-			std::printf("%f", *lit.as<double>());
+			std::printf(" %f", *lit.as<double>());
 			break;
 		case lox::literal_type::integral:
-			std::printf("%lld", *lit.as<int64_t>());
+			std::printf(" %lld", *lit.as<int64_t>());
 			break;
 		case lox::literal_type::string: {
 			const auto str{ *lit.as<std::string_view>() };
-			std::printf("%.*s", static_cast<int32_t>(std::size(str)), std::data(str));
+			std::printf(" %.*s", static_cast<int32_t>(std::size(str)), std::data(str));
 		} break;
 		default: break;
 	}
 }
 
-int evaluate(const std::string_view script) {
-	lox::scanner scanner{ script };
+int evaluate(const std::string_view file_path, const std::string_view script) {
+	lox::error_handler errout{};
+
+	lox::scanner scanner{ script, errout.register_file(file_path), errout };
 
 	auto output{ scanner.scan() };
 
-	const auto [tokens, literals, errors]{ std::move(output) };
+	const auto [tokens, literals]{ std::move(output) };
 
 	std::printf("Errors:\n");
-	for (const auto &error : errors) {
-		std::printf("error E0000: %s\n", std::data(error.message));
-	}
+	errout.export_records([](std::string_view err) {
+		std::printf("%.*s\n", static_cast<int32_t>(std::size(err)), std::data(err));
+	});
+
 	std::printf("\nTokens:\n");
 
 	for (const auto &token : tokens) {
@@ -60,35 +63,7 @@ int evaluate(const std::string_view script) {
 int run_file(const std::string_view path);
 int run_prompt();
 
-void test_visitors() {
-	std::unique_ptr<lox::expression> expr{ std::make_unique<lox::expression::binary>(
-		lox::token{ .type = lox::token_type::star },
-		std::make_unique<lox::expression::grouping>(
-			std::make_unique<lox::expression::binary>(
-				lox::token{ .type = lox::token_type::plus },
-				std::make_unique<lox::expression::literal>(lox::literal{ 1 }),
-				std::make_unique<lox::expression::literal>(lox::literal{ 2 })
-			)
-		),
-		std::make_unique<lox::expression::grouping>(
-			std::make_unique<lox::expression::binary>(
-				lox::token{ .type = lox::token_type::minus },
-				std::make_unique<lox::expression::literal>(lox::literal{ 3 }),
-				std::make_unique<lox::expression::literal>(lox::literal{ 4 })
-			)
-		)
-	)};
-
-	lox::utils::ast_printer ast_print{};
-	std::printf("AST: %s\n", std::data(ast_print.print(expr)));
-
-	lox::utils::rpn_printer rpn_print{};
-	std::printf("RPN: %s\n", std::data(rpn_print.print(expr)));
-}
-
 int main(const int argc, const char *argv[]) {
-	test_visitors();
-
 	if (argc > 2) {
 		const std::string_view executable{ argv[0] };
 		const auto file_name{ executable.substr(executable.find_last_of("/\\") + 1) };
@@ -130,20 +105,20 @@ int run_file(const std::string_view path) {
 		std::array<char, stack_buffer_size> buffer{};
 		const auto read_bytes{ std::fread(std::data(buffer), sizeof(char), length, file) };
 		std::fclose(file);
-		return evaluate(std::string_view{ std::data(buffer), read_bytes });
+		return evaluate(path, std::string_view{ std::data(buffer), read_bytes });
 	}
 
 	std::vector<char> buffer(static_cast<size_t>(length));
 	const auto read_bytes{ std::fread(std::data(buffer), sizeof(char), length, file) };
 	std::fclose(file);
-	return evaluate(std::string_view{ std::data(buffer), read_bytes });
+	return evaluate(path, std::string_view{ std::data(buffer), read_bytes });
 }
 
 int run_prompt() {
 	std::printf("Lox 1.0.0\n> ");
 
 	for (std::string line{}; std::getline(std::cin, line); std::printf("> ")) {
-		std::printf("%d\n", evaluate(line));
+		std::printf("%d\n", evaluate("console", line));
 	}
 
 	return EXIT_SUCCESS;

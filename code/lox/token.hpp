@@ -21,10 +21,10 @@ enum class token_type : uint8_t {
 	greater, greater_equal,
 
 	// Literals
-	identifier, string, number, boolean,
+	identifier, string, number, boolean, null,
 
 	// keywords
-	kw_var, kw_true, kw_false,
+	kw_var,
 	kw_and, kw_or, kw_if, kw_else, kw_while, kw_for,
 	kw_fun, kw_return, kw_class, kw_this, kw_super,
 
@@ -78,11 +78,10 @@ struct token {
 		case string:        return "string"sv;
 		case number:        return "number"sv;
 		case boolean:       return "boolean"sv;
+		case null:          return "null"sv;
 
 	// keywords
 		case kw_var:        return "var"sv;
-		case kw_true:       return "true"sv;
-		case kw_false:      return "false"sv;
 		case kw_and:        return "and"sv;
 		case kw_or:         return "or"sv;
 		case kw_if:         return "if"sv;

@@ -5,13 +5,8 @@ fun sum(var lhv, var rhv) {
 // comments are supported too #
 var integer_test = 10;
 var double_test = 10.00;
-var language_variable = "lox";
-
-var null_test = null;
-var false_boolean_test = false;
-var true_boolean_test = true;
-
-print language_variable;
+var language_variable = "lox;
+print language_variable;#;
 print sum(integer_test, double_test);
 /*
 and multi-line comments

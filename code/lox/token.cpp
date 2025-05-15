@@ -12,8 +12,6 @@ auto from_keyword(const std::string_view name) noexcept -> token_type {
 		using namespace utils::fnv1a_literals;
 
 		case "var"_fnv1a:    return kw_var;
-		case "true"_fnv1a:   return kw_true;
-		case "false"_fnv1a:  return kw_false;
 		case "and"_fnv1a:    return kw_and;
 		case "or"_fnv1a:     return kw_or;
 		case "if"_fnv1a:     return kw_if;

@@ -3,20 +3,28 @@
 
 #include "lox/scanner.hpp"
 
-#include "lox/utils.hpp"
 #include "lox/token.hpp"
 #include "lox/literal.hpp"
+#include "lox/utils/strhash.hpp"
+#include "lox/utils/strutils.hpp"
 
 namespace lox {
 
-scanner::scanner(const std::string_view script)
-	: m_script{ lox::utils::strip(script) } {}
+scanner::scanner(const std::string_view script, file_id fileid, error_handler &err)
+	: errout{ err }
+	, m_script{ lox::utils::strip(script) }
+	, m_file_id{ fileid }
+{}
 
 auto scanner::scan() -> output_type {
 	output_type output{};
 
 	if (std::empty(m_script)) {
-		output.errors.emplace_back("No source was given!");
+		errout.report("No source was given!", error_record{
+			.code    = error_code::se_no_sources,
+			.file_id = m_file_id,
+			.line    = m_line,
+		}, m_script);
 		return std::move(output);
 	}
 
@@ -106,10 +114,13 @@ auto scanner::next_token(uint32_t pos, output_type &output) -> uint32_t {
 	}
 
 	if (std::isalpha(symbol) || symbol == '_') {
+		if (auto next_pos{ try_parse_null_or_boolean(pos, output) }; next_pos.has_value()) {
+			return next_pos.value();
+		}
 		return parse_identifier_token(pos, output);
 	}
 
-	output.errors.emplace_back(make_error_unexpected_symbol(pos));
+	make_error_unexpected_symbol(pos);
 
 	return pos + symbol_size; // keep going
 }
@@ -126,9 +137,15 @@ auto scanner::parse_string_token(const uint32_t pos, output_type &output) -> uin
 
 	if (cur == end) {
 		++m_line;
-		output.errors.emplace_back(
-			make_error_message(R"(Unclosed string literal! No '"' was found)", pos, pos + 1u)
-		);
+
+		errout.report(R"(Unclosed string literal! No '"' was found)", error_record{
+			.code = error_code::se_broken_symmetry,
+			.file_id = m_file_id,
+			.line    = m_line,
+			.from    = pos,
+			.to      = static_cast<uint16_t>(pos + 1)
+		}, m_script);
+
 		return skip_till(';', pos + 1);
 	}
 
@@ -179,6 +196,50 @@ auto scanner::parse_identifier_token(uint32_t pos, output_type &output) -> uint3
 	return cur;
 }
 
+auto scanner::try_parse_null_or_boolean(uint32_t pos, output_type &output) -> std::optional<uint32_t> {
+	if (constexpr std::string_view check{ "ntf" }; check.find(m_script[pos]) == std::string_view::npos) {
+		return std::nullopt;
+	}
+
+	const auto end{ end_position() };
+
+	constexpr auto is_punct_or_space_except_underscore{ [](auto symbol) {
+		return !((std::ispunct(symbol) && symbol != '_') || std::isspace(symbol));
+	} };
+
+	auto cur{ pos + 1u };
+	while (cur != end && is_punct_or_space_except_underscore(m_script[cur])) {
+		++cur;
+	}
+
+	const size_t len{ static_cast<size_t>(cur - pos) };
+
+	const auto identifier{ m_script.substr(pos, len) };
+	const auto id{ static_cast<uint16_t>(std::size(output.literals)) };
+	switch (utils::fnv1a(identifier)) {
+		using namespace utils::fnv1a_literals;
+		case "null"_fnv1a:
+			output.literals.emplace_back();
+			output.tokens.emplace_back(pos, id, token_type::null);
+			return cur;
+
+		case "true"_fnv1a:
+			output.literals.emplace_back(true);
+			break;
+
+		case "false"_fnv1a:
+			output.literals.emplace_back(false);
+			break;
+
+		default:
+			return std::nullopt;
+	}
+
+	output.tokens.emplace_back(pos, id, token_type::boolean);
+
+	return cur;
+}
+
 auto scanner::skip_till(const char matches, uint32_t pos) const noexcept -> uint32_t {
 	const auto end{ end_position() };
 	while (pos < end && m_script[pos] != matches) {
@@ -210,43 +271,21 @@ auto scanner::skip_multiline_comment(uint32_t pos) noexcept -> uint32_t {
 	return pos;
 }
 
-auto scanner::make_error_unexpected_symbol(const uint32_t pos) const -> error_type {
+void scanner::make_error_unexpected_symbol(const uint32_t pos) const {
 	constexpr size_t msg_length{ sizeof("Unexpected symbol ' '") };
 	constexpr size_t symbol_pos{ sizeof("Unexpected symbol '") - 1u };
 
 	std::array<char, msg_length> stack_string{ "Unexpected symbol ' '" };
 	stack_string[symbol_pos] = m_script[pos];
 
-	// auto [ptr, len]{ std::format_to_n(std::data(stack_string), std::size(stack_string), "Unexpected symbol '{}'", m_script[pos]) };
-
-	return error_type{
-		.message = make_error_message(
-			std::string_view{ std::data(stack_string), std::size(stack_string) - 1 },
-			pos, pos + 1
-		)
-	};
-}
-
-auto scanner::make_error_message(const std::string_view text, const uint32_t from, const uint32_t to) const -> std::string {
-	const auto line_start_pos{ m_script.find_last_of('\n', from) };
-	const auto line_start{ line_start_pos != std::string_view::npos ? line_start_pos + 1u : 0u };
-	const auto line_end{ m_script.find_first_of('\n', to) };
-
-	const auto line{ m_script.substr(line_start,
-		line_end != std::string_view::npos ? line_end - line_start : line_end
-	) };
-
-	return std::format(
-R"({}:
-
-{:3} | {}
-     {:>{}}{:^>{}}
-)",
-		text,
-		m_line, line,
-		' ', from - line_start + 1,
-		'^', to - from
-	);
+	const std::string_view message{ std::begin(stack_string), std::size(stack_string) - 1ull };
+	errout.report(message, error_record{
+		.code    = error_code::se_no_sources,
+		.file_id = m_file_id,
+		.line    = m_line,
+		.from    = pos,
+		.to      = pos + 1u
+	}, m_script);
 }
 
 } // namespace lox

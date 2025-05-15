@@ -5,6 +5,8 @@
 #include <string_view>
 #include <tl/expected.hpp>
 
+#include "lox/error_handler.hpp"
+
 namespace lox {
 
 struct token;
@@ -17,22 +19,21 @@ public:
 		uint32_t new_lines{};
 	};
 
-	struct error_type {
-		std::string message{};
-	};
 	struct output_type {
 		std::vector<token> tokens{};
-		std::vector<literal> literals{};
-		std::vector<error_type> errors{};
+		std::vector<literal> literals{}; /// @todo reduce duplications using caching
 	};
 
-	explicit scanner(const std::string_view script);
+	explicit scanner(const std::string_view script, file_id file_id, error_handler &errs);
 
 	[[nodiscard]] auto scan() -> output_type;
 
 private:
+	error_handler &errout;
 	std::string_view m_script;
+	file_id m_file_id;
 	uint32_t m_line{};
+	bool m_failed{};
 
 	auto end_position() const noexcept -> uint32_t;
 
@@ -41,14 +42,13 @@ private:
 	auto parse_string_token(uint32_t position, output_type &output) -> uint32_t;
 	auto parse_number_token(uint32_t position, output_type &output) -> uint32_t;
 	auto parse_identifier_token(uint32_t position, output_type &output) -> uint32_t;
+	auto try_parse_null_or_boolean(uint32_t position, output_type &output) -> std::optional<uint32_t>;
 
 	auto skip_till(const char matches, uint32_t from) const noexcept -> uint32_t;
 	auto skip_whitespaces(uint32_t position) noexcept -> uint32_t;
 	auto skip_multiline_comment(uint32_t position) noexcept -> uint32_t;
 
-	auto make_error_unexpected_symbol(uint32_t pos) const -> error_type;
-	auto make_error_message(const std::string_view text, uint32_t from, uint32_t to) const -> std::string;
-
+	void make_error_unexpected_symbol(uint32_t pos) const;
 };
 
 } // namespace lox
