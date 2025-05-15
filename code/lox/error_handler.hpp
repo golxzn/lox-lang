@@ -17,6 +17,9 @@ enum class error_code : uint32_t {
 	scanner_error_end = 99,
 
 	parser_error_begin,
+	p_unexpected_token,
+	p_broken_symmetry,       /// The symmetry character like () or {} was not closed
+	p_missing_literal,
 	parser_error_end = 199,
 
 };
@@ -56,7 +59,8 @@ public:
 
 	[[nodiscard]] auto register_file(const std::string_view path) -> file_id;
 
-	void report(std::string_view message, error_record record, std::string_view source_code) noexcept;
+	void report(std::string_view message, error_record record, std::string_view source_code = {}) noexcept;
+	void clear();
 
 	void export_records(const error_exporter auto & ...exporter) const {
 		std::pmr::monotonic_buffer_resource resource{};

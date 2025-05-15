@@ -5,9 +5,10 @@
 #include <algorithm>
 #include <iostream>
 
-#include "lox/scanner.hpp"
 #include "lox/token.hpp"
 #include "lox/literal.hpp"
+#include "lox/scanner.hpp"
+#include "lox/parser.hpp"
 #include "lox/utils/ast_printer.hpp"
 #include "lox/utils/rpn_printer.hpp"
 
@@ -36,16 +37,19 @@ void print_literal(const lox::literal &lit) {
 int evaluate(const std::string_view file_path, const std::string_view script) {
 	lox::error_handler errout{};
 
-	lox::scanner scanner{ script, errout.register_file(file_path), errout };
+	const auto file_id{ errout.register_file(file_path) };
+	lox::scanner scanner{ script, file_id, errout };
 
+	std::printf("\n------------------------ SCANNING -----------------------\n\n");
 	auto output{ scanner.scan() };
 
 	const auto [tokens, literals]{ std::move(output) };
 
-	std::printf("Errors:\n");
+	std::printf("Scan Errors:\n");
 	errout.export_records([](std::string_view err) {
 		std::printf("%.*s\n", static_cast<int32_t>(std::size(err)), std::data(err));
 	});
+	errout.clear();
 
 	std::printf("\nLiterals:\n");
 	for (size_t i{}; i < std::size(literals); ++i) {
@@ -57,12 +61,31 @@ int evaluate(const std::string_view file_path, const std::string_view script) {
 	std::printf("\nTokens:\n");
 
 	for (const auto &token : tokens) {
-		std::printf("at %.3u is %s", token.position, std::data(lox::to_string(token.type)));
+		std::printf("at %.3u is %s", token.position, std::data(lox::token_name(token.type)));
 		if (lox::invalid_literal_id != token.literal_id) {
 			print_literal(literals.at(token.literal_id));
 		}
 		std::printf("\n");
 	}
+
+
+	std::printf("\n------------------------ PARSING ------------------------\n\n");
+
+	lox::parser parser{ tokens, literals, file_id, errout };
+	auto expr{ parser.parse() };
+
+	std::printf("Parse Errors:\n");
+	errout.export_records([](std::string_view err) {
+		std::printf("%.*s\n", static_cast<int32_t>(std::size(err)), std::data(err));
+	});
+	errout.clear();
+
+
+	std::printf("AST:\n");
+	std::printf("\t%s\n", std::data(lox::utils::ast_printer{}.print(expr)));
+
+	std::printf("\nRPN:\n\t");
+	std::printf("\t%s\n", std::data(lox::utils::rpn_printer{}.print(expr)));
 
 	return EXIT_SUCCESS;
 }
