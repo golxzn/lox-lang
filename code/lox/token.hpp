@@ -35,14 +35,14 @@ constexpr uint16_t invalid_literal_id{ (std::numeric_limits<uint16_t>::max)() };
 
 #pragma pack(push, 1)
 struct token {
+	uint32_t line{};
 	uint32_t position{};
 	uint16_t literal_id{ invalid_literal_id };
 	token_type type{ token_type::invalid };
 };
 #pragma pack(pop)
 
-
-[[nodiscard]] constexpr auto to_string(const token_type type) noexcept -> std::string_view {
+[[nodiscard]] constexpr auto token_name(const token_type type) noexcept -> std::string_view {
 	using namespace std::string_view_literals;
 	using enum token_type;
 
@@ -99,6 +99,60 @@ struct token {
 			break;
 	}
 	return "invalid"sv;
+}
+
+[[nodiscard]] constexpr auto token_string(const token_type type) noexcept -> std::string_view {
+	using namespace std::string_view_literals;
+	using enum token_type;
+
+	switch (type) {
+	// Single character tokens
+		case left_paren:    return "("sv;
+		case right_paren:   return ")"sv;
+		case left_brace:    return "{"sv;
+		case right_brace:   return "}"sv;
+		case comma:         return ","sv;
+		case dot:           return "."sv;
+		case minus:         return "-"sv;
+		case plus:          return "+"sv;
+		case semicolon:     return ";"sv;
+		case slash:         return "/"sv;
+		case star:          return "*"sv;
+
+	// One-two characters tokens
+		case bang:          return "!"sv;
+		case bang_equal:    return "!="sv;
+		case equal:         return "="sv;
+		case equal_equal:   return "=="sv;
+		case less:          return "<"sv;
+		case less_equal:    return "<="sv;
+		case greater:       return ">"sv;
+		case greater_equal: return ">="sv;
+		default: break;
+	}
+
+	switch (type) {
+	// Literals
+		case null:          return "null"sv;
+
+	// keywords
+		case kw_var:        return "var"sv;
+		case kw_and:        return "and"sv;
+		case kw_or:         return "or"sv;
+		case kw_if:         return "if"sv;
+		case kw_else:       return "else"sv;
+		case kw_while:      return "while"sv;
+		case kw_for:        return "for"sv;
+		case kw_fun:        return "fun"sv;
+		case kw_return:     return "return"sv;
+		case kw_class:      return "class"sv;
+		case kw_this:       return "this"sv;
+		case kw_super:      return "super"sv;
+
+		default:
+			break;
+	}
+	return ""sv;
 }
 
 [[nodiscard]] auto from_keyword(const std::string_view name) noexcept -> token_type;

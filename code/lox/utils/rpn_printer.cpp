@@ -10,14 +10,14 @@ auto rpn_printer::print(std::unique_ptr<expression> &expr) -> std::string {
 
 void rpn_printer::accept(expression::unary &expr) {
 	expr.expr->accept(*this);
-	value += to_string(expr.op.type);
+	value += token_name(expr.op.type);
 	value += " ";
 }
 
 void rpn_printer::accept(expression::binary &expr) {
 	expr.left->accept(*this);
 	expr.right->accept(*this);
-	value += to_string(expr.op.type);
+	value += token_name(expr.op.type);
 	value += " ";
 }
 

@@ -42,7 +42,14 @@ void error_handler::make_msg(std::pmr::string &buffer, size_t id, const error_re
 		}
 	}
 
-	std::format_to(out, "{}\n", m_error_messages.at(id));
+	std::format_to(out, " {}\n", m_error_messages.at(id));
+}
+
+void error_handler::clear() {
+	m_lines.clear();
+	m_error_messages.clear();
+	m_errors.clear();
+	// m_files.clear();
 }
 
 auto error_handler::take_line(const std::string_view source, const error_record &record) const noexcept -> std::pmr::string {

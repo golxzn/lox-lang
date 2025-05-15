@@ -21,7 +21,7 @@ public:
 
 	struct output_type {
 		std::vector<token> tokens{};
-		std::vector<literal> literals{}; /// @todo reduce duplications using caching
+		std::vector<literal> literals{};
 	};
 
 	explicit scanner(const std::string_view script, file_id file_id, error_handler &errs);

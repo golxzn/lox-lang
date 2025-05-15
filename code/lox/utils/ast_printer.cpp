@@ -9,11 +9,11 @@ auto ast_printer::print(std::unique_ptr<expression> &expr) -> std::string {
 }
 
 void ast_printer::accept(expression::unary &expr) {
-	parenthesize(to_string(expr.op.type), expr.expr);
+	parenthesize(token_name(expr.op.type), expr.expr);
 }
 
 void ast_printer::accept(expression::binary &expr) {
-	parenthesize(to_string(expr.op.type), expr.left, expr.right);
+	parenthesize(token_name(expr.op.type), expr.left, expr.right);
 }
 
 void ast_printer::accept(expression::grouping &expr) {
