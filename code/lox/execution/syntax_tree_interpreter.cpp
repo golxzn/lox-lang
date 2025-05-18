@@ -128,7 +128,7 @@ syntax_tree_interpreter::syntax_tree_interpreter(file_id file, error_handler &ha
 	: errout{ handler }, m_file_id{ file } {}
 
 
-auto syntax_tree_interpreter::evaluate(std::unique_ptr<expression> &expr) -> literal {
+auto syntax_tree_interpreter::evaluate(const std::unique_ptr<expression> &expr) -> literal {
 	m_output = {};
 	if (expr) try {
 		expr->accept(*this);
@@ -138,7 +138,7 @@ auto syntax_tree_interpreter::evaluate(std::unique_ptr<expression> &expr) -> lit
 	return m_output;
 }
 
-void syntax_tree_interpreter::accept(expression::unary &unary) {
+void syntax_tree_interpreter::accept(const expression::unary &unary) {
 	auto value{ evaluate(unary.expr) };
 	if (!is_suitable_for(unary.op.type, value.type())) {
 		throw error_no_suitable(unary.op.type, value);
@@ -158,7 +158,7 @@ void syntax_tree_interpreter::accept(expression::unary &unary) {
 	m_output = std::move(value);
 }
 
-void syntax_tree_interpreter::accept(expression::binary &expr) {
+void syntax_tree_interpreter::accept(const expression::binary &expr) {
 	auto lhv{ evaluate(expr.left) };
 	auto rhv{ evaluate(expr.right) };
 	if (!is_suitable_for(expr.op.type, lhv.type(), rhv.type())) {
@@ -201,11 +201,11 @@ void syntax_tree_interpreter::accept(expression::binary &expr) {
 	;
 }
 
-void syntax_tree_interpreter::accept(expression::grouping &group) {
+void syntax_tree_interpreter::accept(const expression::grouping &group) {
 	m_output = evaluate(group.expr);
 }
 
-void syntax_tree_interpreter::accept(expression::literal &value) {
+void syntax_tree_interpreter::accept(const expression::literal &value) {
 	m_output = value.value;
 }
 

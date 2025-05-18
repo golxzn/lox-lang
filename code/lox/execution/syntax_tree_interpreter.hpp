@@ -2,7 +2,7 @@
 
 #include <optional>
 #include <stdexcept>
-#include "lox/expression.hpp"
+#include "lox/gen/expression.hpp"
 #include "lox/error_handler.hpp"
 
 namespace lox::execution {
@@ -16,13 +16,13 @@ public:
 	syntax_tree_interpreter(file_id file, error_handler &handler) noexcept;
 	~syntax_tree_interpreter() override = default;
 
-	[[nodiscard]] auto evaluate(std::unique_ptr<expression> &expr) -> literal;
+	[[nodiscard]] auto evaluate(const std::unique_ptr<expression> &expr) -> literal;
 	[[nodiscard]] auto runtime_error() const noexcept -> bool { return got_runtime_error; }
 
-	void accept(expression::unary &unary) override;
-	void accept(expression::binary &binary) override;
-	void accept(expression::grouping &group) override;
-	void accept(expression::literal &value) override;
+	void accept(const expression::unary &unary) override;
+	void accept(const expression::binary &binary) override;
+	void accept(const expression::grouping &group) override;
+	void accept(const expression::literal &value) override;
 
 private:
 	literal m_output{};

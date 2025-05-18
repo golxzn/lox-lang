@@ -6,7 +6,7 @@
 
 #include "lox/token.hpp"
 #include "lox/literal.hpp"
-#include "lox/expression.hpp"
+#include "lox/gen/expression.hpp"
 #include "lox/error_handler.hpp"
 
 namespace lox {

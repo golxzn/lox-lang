@@ -16,6 +16,11 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY ${root}/bin
 )
 
+find_package(Python3 REQUIRED)
+execute_process(
+	COMMAND ${Python3_EXECUTABLE} ${root}/tools/codegen/generate_ast.py --output ${root}/code/lox/gen/ --code ${root}/code/
+)
+
 target_include_directories(${PROJECT_NAME} PUBLIC ${root}/code)
 
 file(GLOB_RECURSE sources CONFIGURE_DEPENDS ${root}/code/*.cpp)

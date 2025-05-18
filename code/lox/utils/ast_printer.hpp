@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include "lox/expression.hpp"
+#include "lox/gen/expression.hpp"
 
 namespace lox::utils {
 
@@ -9,12 +9,12 @@ class ast_printer final : public expression::visitor_interface {
 public:
 	~ast_printer() override = default;
 
-	[[nodiscard]] auto print(std::unique_ptr<expression> &expr) -> std::string;
+	[[nodiscard]] auto print(const std::unique_ptr<expression> &expr) -> std::string;
 
-	void accept(expression::unary &expr) override;
-	void accept(expression::binary &expr) override;
-	void accept(expression::grouping &expr) override;
-	void accept(expression::literal &expr) override;
+	void accept(const expression::unary &expr) override;
+	void accept(const expression::binary &expr) override;
+	void accept(const expression::grouping &expr) override;
+	void accept(const expression::literal &expr) override;
 
 private:
 	std::string value;
