@@ -9,8 +9,52 @@
 #include "lox/literal.hpp"
 #include "lox/scanner.hpp"
 #include "lox/parser.hpp"
+#include "lox/execution/syntax_tree_interpreter.hpp"
 #include "lox/utils/ast_printer.hpp"
 #include "lox/utils/rpn_printer.hpp"
+
+enum exit_codes : int32_t {
+	ok,
+	usage = 64,  /* command line usage error */
+	dataerr,     /* data format error */
+	noinput,     /* cannot open input */
+	nouser,      /* addressee unknown */
+	nohost,      /* host name unknown */
+	unavailable, /* service unavailable */
+	software,    /* internal software error */
+	oserr,       /* system error (e.g., can't fork) */
+	osfile,      /* critical OS file missing */
+	cantcreat,   /* can't create (user) output file */
+	ioerr,       /* input/output error */
+	tempfail,    /* temp failure; user is invited to retry */
+	protocol,    /* remote error in protocol */
+	noperm,      /* permission denied */
+	config,      /* configuration error */
+};
+
+constexpr auto exit_codes_name(exit_codes code) -> std::string_view {
+	using namespace std::string_view_literals;
+	switch (code) {
+		case ok:          return "ok"sv;
+		case usage:       return "command line usage error"sv;
+		case dataerr:     return "data format error"sv;
+		case noinput:     return "cannot open input"sv;
+		case nouser:      return "addressee unknown"sv;
+		case nohost:      return "host name unknown"sv;
+		case unavailable: return "service unavailable"sv;
+		case software:    return "internal software error"sv;
+		case oserr:       return "system error (e.g., can't fork)"sv;
+		case osfile:      return "critical OS file missing"sv;
+		case cantcreat:   return "can't create (user) output file"sv;
+		case ioerr:       return "input/output error"sv;
+		case tempfail:    return "temp failure; user is invited to retry"sv;
+		case protocol:    return "remote error in protocol"sv;
+		case noperm:      return "permission denied"sv;
+		case config:      return "configuration error"sv;
+		default: break;
+	}
+	return "unknown error"sv;
+}
 
 void print_literal(const lox::literal &lit) {
 	switch (lit.type()) {
@@ -27,14 +71,14 @@ void print_literal(const lox::literal &lit) {
 			std::printf(" %lld", *lit.as<int64_t>());
 			break;
 		case lox::literal_type::string: {
-			const auto str{ *lit.as<std::string_view>() };
+			const auto str{ *lit.as<std::string>() };
 			std::printf(R"( "%.*s")", static_cast<int32_t>(std::size(str)), std::data(str));
 		} break;
 		default: break;
 	}
 }
 
-int evaluate(const std::string_view file_path, const std::string_view script) {
+auto evaluate(const std::string_view file_path, const std::string_view script) -> exit_codes {
 	lox::error_handler errout{};
 
 	const auto file_id{ errout.register_file(file_path) };
@@ -84,14 +128,28 @@ int evaluate(const std::string_view file_path, const std::string_view script) {
 	std::printf("AST:\n");
 	std::printf("\t%s\n", std::data(lox::utils::ast_printer{}.print(expr)));
 
-	std::printf("\nRPN:\n\t");
-	std::printf("\t%s\n", std::data(lox::utils::rpn_printer{}.print(expr)));
+	std::printf("\n----------------------- EXECUTION -----------------------\n\n");
 
-	return EXIT_SUCCESS;
+	lox::execution::syntax_tree_interpreter interpreter{ file_id, errout };
+
+	const auto value{ interpreter.evaluate(expr) };
+	if (interpreter.runtime_error()) {
+		std::printf("Runtime Errors:\n");
+		errout.export_records([](std::string_view err) {
+			std::printf("%.*s\n", static_cast<int32_t>(std::size(err)), std::data(err));
+		});
+		errout.clear();
+
+		return exit_codes::software;
+	}
+
+	std::printf("Output: %s\n", std::data(lox::to_string(value)));
+
+	return exit_codes::ok;
 }
 
-int run_file(const std::string_view path);
-int run_prompt();
+auto run_file(const std::string_view path) -> exit_codes;
+auto run_prompt() -> exit_codes;
 
 int main(const int argc, const char *argv[]) {
 	if (argc > 2) {
@@ -101,7 +159,7 @@ int main(const int argc, const char *argv[]) {
 			static_cast<int32_t>(std::size(file_name)),
 			std::data(file_name)
 		);
-		return 64;
+		return exit_codes::usage;
 	}
 
 	if (argc == 2) {
@@ -110,23 +168,23 @@ int main(const int argc, const char *argv[]) {
 	return run_prompt();
 }
 
-int run_file(const std::string_view path) {
+auto run_file(const std::string_view path) -> exit_codes {
 	auto file{ std::fopen(std::data(path), "r") };
 	if (file == nullptr) {
 		std::printf(R"(Failed to open "%s" file: %s)", std::data(path), std::strerror(errno));
-		return EXIT_FAILURE;
+		return exit_codes::ioerr;
 	}
 
 	if (std::fseek(file, 0, SEEK_END)) {
 		std::printf(R"(Failed to seek file "%s": %s)", std::data(path), std::strerror(errno));
 		std::fclose(file);
-		return EXIT_FAILURE;
+		return exit_codes::ioerr;
 	}
 	const auto length{ std::ftell(file) };
 	if (length == -1) {
 		std::printf(R"(Failed to read file "%s": %s)", std::data(path), std::strerror(errno));
 		std::fclose(file);
-		return EXIT_FAILURE;
+		return exit_codes::ioerr;
 	}
 
 	std::fseek(file, 0, SEEK_SET);
@@ -144,13 +202,14 @@ int run_file(const std::string_view path) {
 	return evaluate(path, std::string_view{ std::data(buffer), read_bytes });
 }
 
-int run_prompt() {
+auto run_prompt() -> exit_codes {
 	std::printf("Lox 1.0.0\n> ");
 
 	for (std::string line{}; std::getline(std::cin, line); std::printf("> ")) {
-		std::printf("%d\n", evaluate("console", line));
+		const auto exit_code{ evaluate("console", line) };
+		std::printf("Result %X: %s\n", exit_code, std::data(exit_codes_name(exit_code)));
 	}
 
-	return EXIT_SUCCESS;
+	return exit_codes::ok;
 }
 

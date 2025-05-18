@@ -157,4 +157,33 @@ struct token {
 
 [[nodiscard]] auto from_keyword(const std::string_view name) noexcept -> token_type;
 
+namespace token_traits {
+
+template<token_type>
+struct is_arithmetic : std::bool_constant<false> {};
+
+template<> struct is_arithmetic<token_type::plus> : std::bool_constant<true> {};
+template<> struct is_arithmetic<token_type::minus> : std::bool_constant<true> {};
+template<> struct is_arithmetic<token_type::star> : std::bool_constant<true> {};
+template<> struct is_arithmetic<token_type::slash> : std::bool_constant<true> {};
+
+template<token_type Token>
+constexpr auto is_arithmetic_v{ is_arithmetic<Token>::value };
+
+
+template<token_type>
+struct is_logical : std::bool_constant<false> {};
+
+template<> struct is_logical<token_type::equal_equal> : std::bool_constant<true> {};
+template<> struct is_logical<token_type::bang_equal> : std::bool_constant<true> {};
+template<> struct is_logical<token_type::less> : std::bool_constant<true> {};
+template<> struct is_logical<token_type::less_equal> : std::bool_constant<true> {};
+template<> struct is_logical<token_type::greater> : std::bool_constant<true> {};
+template<> struct is_logical<token_type::greater_equal> : std::bool_constant<true> {};
+
+template<token_type Token>
+constexpr auto is_logical_v{ is_logical<Token>::value };
+
+} // namespace token_traits
+
 } // namespace lox

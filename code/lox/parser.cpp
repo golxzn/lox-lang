@@ -69,7 +69,7 @@ auto parser::primary() -> std::unique_ptr<expression> {
 			std::format(R"(Missing literal #{} of the "{}" token!)",
 				id, token_name(token.type)
 			),
-			error_code::p_missing_literal, token
+			error_code::pe_missing_literal, token
 		);
 	}
 
@@ -78,13 +78,13 @@ auto parser::primary() -> std::unique_ptr<expression> {
 		auto expr_{ expr() };
 
 		if (!check(right_paren)) {
-			make_error("Expected ')' after expression", error_code::p_broken_symmetry, token);
+			make_error("Expected ')' after expression", error_code::pe_broken_symmetry, token);
 		}
 		advice();
 		return std::make_unique<expression::grouping>(std::move(expr_));
 	}
 
-	throw make_error("Unexpected token!", error_code::p_unexpected_token, peek());
+	throw make_error("Unexpected token!", error_code::pe_unexpected_token, peek());
 }
 
 void parser::synchronize() {

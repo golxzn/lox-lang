@@ -32,7 +32,7 @@ auto scanner::scan() -> output_type {
 	// Common used shit
 	output.literals = std::vector<literal>{
 		{ /*null*/ }, true, false,
-		std::string_view{ "" },
+		std::string{},
 		double{},
 		int64_t{},
 	};
@@ -156,7 +156,7 @@ auto scanner::parse_string_token(const uint32_t pos, output_type &output) -> uin
 		return skip_till(';', pos + 1);
 	}
 
-	const auto id{ emplace_literal(m_script.substr(pos + 1u, cur - pos - 1u), output.literals) };
+	const auto id{ emplace_literal(std::string{ m_script.substr(pos + 1u, cur - pos - 1u) }, output.literals) };
 	output.tokens.emplace_back(m_line, pos, id, token_type::string);
 
 	m_line += lines_count;

@@ -15,7 +15,7 @@ enum class literal_type : uint8_t {
 };
 
 using literal_base = std::variant<std::monostate,
-	bool, double, int64_t, std::string_view
+	bool, double, int64_t, std::string
 >;
 
 struct literal : literal_base {
@@ -38,5 +38,22 @@ private:
 
 [[nodiscard]] auto to_number_literal(const std::string_view str_value) -> literal;
 [[nodiscard]] auto to_literal(const std::string_view str_value) -> literal;
+[[nodiscard]] auto to_string(const literal &lit) -> std::string;
+[[nodiscard]] constexpr auto type_name(const literal_type type) noexcept -> std::string_view {
+	using namespace std::string_view_literals;
+	switch (type) {
+		using enum literal_type;
+
+		case null:     return "null"sv;
+		case boolean:  return "boolean"sv;
+		case number:   return "number"sv;
+		case integral: return "integer"sv;
+		case string:   return "string"sv;
+
+		default:
+			break;
+	}
+	return ""sv;
+}
 
 } // namespace lox

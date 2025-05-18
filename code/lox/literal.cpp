@@ -65,8 +65,22 @@ auto to_literal(const std::string_view str_value) -> literal {
 		return literal{ val };
 	}
 
-	return literal{ str_value };
+	return literal{ std::string{ str_value } };
 }
 
+auto to_string(const literal &lit) -> std::string {
+	switch (lit.type()) {
+		using enum literal_type;
+
+		case boolean:  return *lit.as<bool>() ? "true" : "false";
+		case number:   return std::to_string(*lit.as<double>());
+		case integral: return std::to_string(*lit.as<int64_t>());
+		case string:   return *lit.as<std::string>();
+
+		default: break;
+	}
+
+	return "null";
+}
 
 } // namespace lox

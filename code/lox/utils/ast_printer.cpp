@@ -22,7 +22,7 @@ void ast_printer::accept(expression::grouping &expr) {
 }
 
 void ast_printer::accept(expression::literal &expr) {
-	if (auto str{ expr.value.as<std::string_view>() }; str != nullptr) {
+	if (auto str{ expr.value.as<std::string>() }; str != nullptr) {
 		value.append(*str);
 	} else if (auto b{ expr.value.as<bool>() }; b != nullptr) {
 		value.append(*b ? "true" : "false");
