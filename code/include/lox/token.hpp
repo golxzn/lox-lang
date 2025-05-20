@@ -30,7 +30,11 @@ enum class token_type : uint8_t {
 	kw_and, kw_or, kw_if, kw_else, kw_while, kw_for,
 	kw_fun, kw_return, kw_class, kw_this, kw_super,
 
-	end_of_file
+#if defined(LOX_DEBUG)
+	kw_print,
+#endif // defined(LOX_DEBUG)
+
+	end_of_file = 0xFFu
 };
 
 constexpr uint16_t invalid_literal_id{ (std::numeric_limits<uint16_t>::max)() };
@@ -43,6 +47,39 @@ struct LOX_EXPORT token {
 	token_type type{ token_type::invalid };
 };
 #pragma pack(pop)
+
+[[nodiscard]] constexpr auto keyword_name(const token_type keyword) noexcept -> std::string_view {
+	using namespace std::string_view_literals;
+	using enum token_type;
+
+	switch (keyword) {
+	// Literals
+		case null:          return "null"sv;
+
+	// keywords
+		case kw_var:        return "var"sv;
+		case kw_and:        return "and"sv;
+		case kw_or:         return "or"sv;
+		case kw_if:         return "if"sv;
+		case kw_else:       return "else"sv;
+		case kw_while:      return "while"sv;
+		case kw_for:        return "for"sv;
+		case kw_fun:        return "fun"sv;
+		case kw_return:     return "return"sv;
+		case kw_class:      return "class"sv;
+		case kw_this:       return "this"sv;
+		case kw_super:      return "super"sv;
+
+#if defined(LOX_DEBUG)
+		case kw_print:      return "print"sv;
+#endif // defined(LOX_DEBUG)
+
+		default:
+			break;
+	}
+
+	return ""sv;
+}
 
 [[nodiscard]] constexpr auto token_name(const token_type type) noexcept -> std::string_view {
 	using namespace std::string_view_literals;
@@ -82,23 +119,13 @@ struct LOX_EXPORT token {
 		case boolean:       return "boolean"sv;
 		case null:          return "null"sv;
 
-	// keywords
-		case kw_var:        return "var"sv;
-		case kw_and:        return "and"sv;
-		case kw_or:         return "or"sv;
-		case kw_if:         return "if"sv;
-		case kw_else:       return "else"sv;
-		case kw_while:      return "while"sv;
-		case kw_for:        return "for"sv;
-		case kw_fun:        return "fun"sv;
-		case kw_return:     return "return"sv;
-		case kw_class:      return "class"sv;
-		case kw_this:       return "this"sv;
-		case kw_super:      return "super"sv;
-
 		case end_of_file:   return "end_of_file"sv;
 		default:
 			break;
+	}
+
+	if (const auto word{ keyword_name(type) }; !std::empty(word)) {
+		return word;
 	}
 	return "invalid"sv;
 }
@@ -130,31 +157,14 @@ struct LOX_EXPORT token {
 		case less_equal:    return "<="sv;
 		case greater:       return ">"sv;
 		case greater_equal: return ">="sv;
-		default: break;
-	}
 
-	switch (type) {
 	// Literals
 		case null:          return "null"sv;
 
-	// keywords
-		case kw_var:        return "var"sv;
-		case kw_and:        return "and"sv;
-		case kw_or:         return "or"sv;
-		case kw_if:         return "if"sv;
-		case kw_else:       return "else"sv;
-		case kw_while:      return "while"sv;
-		case kw_for:        return "for"sv;
-		case kw_fun:        return "fun"sv;
-		case kw_return:     return "return"sv;
-		case kw_class:      return "class"sv;
-		case kw_this:       return "this"sv;
-		case kw_super:      return "super"sv;
-
-		default:
-			break;
+		default: break;
 	}
-	return ""sv;
+
+	return keyword_name(type);
 }
 
 [[nodiscard]] auto from_keyword(const std::string_view name) noexcept -> token_type;
