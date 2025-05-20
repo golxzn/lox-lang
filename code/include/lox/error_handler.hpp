@@ -17,6 +17,7 @@ enum class error_code : uint32_t {
 	scanner_error_end = 99,
 
 	parser_error_begin,
+	pe_missing_end_of_statement,
 	pe_unexpected_token,
 	pe_broken_symmetry,       /// The symmetry character like () or {} was not closed
 	pe_missing_literal,

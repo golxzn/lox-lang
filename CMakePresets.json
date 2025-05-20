@@ -1,0 +1,169 @@
+{
+	"version": 5,
+	"cmakeMinimumRequired": { "major": 3, "minor": 25 },
+	"include": [
+		"cmake/presets/flags.json",
+		"cmake/presets/common.json",
+		"cmake/presets/ci.json"
+	],
+	"configurePresets": [
+		{
+			"name": "dev-vs22-windows",
+			"displayName": "[DEV] VS22 Windows",
+			"inherits": [ "ci-win64-vs22", "dev-mode" ],
+			"condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+		},
+		{
+			"name": "vs22-windows",
+			"displayName": "VS22 Windows",
+			"inherits": [ "ci-win64-vs22" ],
+			"condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+		},
+
+		{
+			"name": "dev-clang-ninja-windows",
+			"displayName": "[DEV] Clang Windows",
+			"inherits": [ "ci-win64-clang-ninja", "dev-mode" ],
+			"condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+		},
+		{
+			"name": "clang-ninja-windows",
+			"displayName": "Clang Windows",
+			"inherits": [ "ci-win64-clang-ninja" ],
+			"condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+		},
+
+
+		{
+			"name": "dev-linux",
+			"displayName": "[DEV] Linux",
+			"inherits": [ "ci-unix", "clang-tidy", "cppcheck", "dev-mode" ],
+			"condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+		},
+		{
+			"name": "linux",
+			"displayName": "Linux",
+			"inherits": [ "ci-unix", "clang-tidy", "cppcheck" ],
+			"condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+		},
+
+		{
+			"name": "dev-macos",
+			"displayName": "[DEV] MacOS",
+			"inherits": [ "ci-unix", "dev-mode" ],
+			"condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" }
+		},
+		{
+			"name": "macos",
+			"displayName": "MacOS",
+			"inherits": [ "ci-unix" ],
+			"condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" }
+		}
+
+	],
+	"buildPresets": [
+		{
+			"name": "vs22-dev-win-debug",
+			"inherits": [ "common", "debug" ],
+			"configurePreset": "dev-vs22-windows"
+		},
+		{
+			"name": "vs22-win-debug",
+			"inherits": [ "common", "debug" ],
+			"configurePreset": "vs22-windows"
+		},
+		{
+			"name": "vs22-dev-win-release",
+			"inherits": [ "common", "release" ],
+			"configurePreset": "dev-vs22-windows"
+		},
+		{
+			"name": "vs22-win-release",
+			"inherits": [ "common", "release" ],
+			"configurePreset": "vs22-windows"
+		},
+
+		{
+			"name": "dev-clang-ninja-win-debug",
+			"inherits": [ "common", "debug" ],
+			"configurePreset": "dev-clang-ninja-windows"
+		},
+		{
+			"name": "clang-ninja-win-debug",
+			"inherits": [ "common", "debug" ],
+			"configurePreset": "clang-ninja-windows"
+		},
+		{
+			"name": "dev-clang-ninja-win-release",
+			"inherits": [ "common", "release" ],
+			"configurePreset": "dev-clang-ninja-windows"
+		},
+		{
+			"name": "clang-ninja-win-release",
+			"inherits": [ "common", "release" ],
+			"configurePreset": "clang-ninja-windows"
+		},
+
+
+		{
+			"name": "dev-linux-debug",
+			"inherits": [ "common", "debug" ],
+			"configurePreset": "dev-linux"
+		},
+		{
+			"name": "linux-debug",
+			"inherits": [ "common", "debug" ],
+			"configurePreset": "linux"
+		},
+		{
+			"name": "dev-linux-release",
+			"inherits": [ "common", "release" ],
+			"configurePreset": "dev-linux"
+		},
+		{
+			"name": "linux-release",
+			"inherits": [ "common", "release" ],
+			"configurePreset": "linux"
+		},
+
+		{
+			"name": "dev-macos-debug",
+			"inherits": [ "common", "debug" ],
+			"configurePreset": "dev-macos"
+		},
+		{
+			"name": "macos-debug",
+			"inherits": [ "common", "debug" ],
+			"configurePreset": "macos"
+		},
+		{
+			"name": "dev-macos-release",
+			"inherits": [ "common", "release" ],
+			"configurePreset": "dev-macos"
+		},
+		{
+			"name": "macos-release",
+			"inherits": [ "common", "release" ],
+			"configurePreset": "macos"
+		},
+
+		{
+			"name": "debug",
+			"hidden": true,
+			"displayName": "Debug",
+			"configuration": "Debug"
+		},
+		{
+			"name": "release",
+			"hidden": true,
+			"displayName": "Release",
+			"configuration": "Release"
+		},
+		{
+			"name": "common",
+			"hidden": true,
+			"jobs": 16
+		}
+	],
+	"testPresets": []
+}

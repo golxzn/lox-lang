@@ -1,36 +1,28 @@
 
-set(_libs)
+set(lox_libraries)
 set(BUILD_STATIC_LIBS ON)
-
-find_package(OpenMP)
-if(OpenMP_CXX_FOUND)
-	message(STATUS "OpenMP found and will be used")
-	list(APPEND _libs OpenMP::OpenMP_CXX)
-endif()
 
 # >------------------------------ expected -------------------------------< #
 
 set(EXPECTED_BUILD_TESTS OFF)
 add_subdirectory(expected)
-list(APPEND _libs tl::expected)
+list(APPEND lox_libraries tl::expected)
 
 # >------------------------------ fast_float -----------------------------< #
 
-set(FASTFLOAT_CXX_STANDARD ${CMAKE_CXX_STANDARD})
-set(FASTFLOAT_INSTALL OFF)
+set(FASTFLOAT_CXX_STANDARD ${lox_cxx_standard})
 add_subdirectory(fast_float)
-list(APPEND _libs FastFloat::fast_float)
+list(APPEND lox_libraries FastFloat::fast_float)
 
-# >------------------------------- target --------------------------------< #
+# >-----------------------------------------------------------------------< #
 
-add_library(tb_libs INTERFACE)
-add_library(tb::libs ALIAS tb_libs)
-target_link_libraries(tb_libs INTERFACE ${_libs})
+target_link_libraries(${lox_target_name} PUBLIC ${lox_libraries})
 
-message(STATUS "Libraries:")
-foreach(lib IN LISTS _libs)
-	message(STATUS "-> ${lib}")
-endforeach()
+if(NOT LOX_SILENT)
+	message(STATUS "Libraries:")
+	foreach(lib IN LISTS _libs)
+		message(STATUS "-> ${lib}")
+	endforeach()
+endif()
 
-
-unset(_libs)
+unset(lox_libraries)
