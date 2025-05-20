@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <memory_resource>
 
+#include "lox/export.hpp"
+
 namespace lox {
 
 enum class error_code : uint32_t {
@@ -35,14 +37,11 @@ enum class warning_code : uint32_t {
 
 using record_code = std::variant<error_code, warning_code>;
 
-enum class file_id : uint32_t {};
-
-struct error_record {
+struct LOX_EXPORT error_record {
 	record_code code{};
-	file_id file_id{};
 	uint32_t line{};
-	uint32_t from{}; /// underscore from position inside the line
-	uint32_t to{};   /// underscore to position inside the line
+	uint32_t from{}; /// underscore from position
+	uint32_t to{};   /// underscore to position
 };
 
 template<class T>
@@ -50,7 +49,7 @@ concept error_exporter = requires(const T &pr) {
 	{ pr(std::string_view{}) };
 };
 
-class error_handler {
+class LOX_EXPORT error_handler {
 public:
 	static constexpr char eol{ '\n' };
 	static constexpr std::pmr::pool_options buffer_options{
@@ -60,11 +59,12 @@ public:
 
 	struct file_info {
 		std::string path{};
+		std::string_view source_code{};
 	};
 
-	[[nodiscard]] auto register_file(const std::string_view path) -> file_id;
+	explicit error_handler(std::string path, std::string_view source_code = {}) noexcept;
 
-	void report(std::string_view message, error_record record, std::string_view source_code = {}) noexcept;
+	void report(std::string_view message, error_record record) noexcept;
 	void clear();
 
 	void export_records(const error_exporter auto & ...exporter) const {
@@ -85,18 +85,16 @@ private:
 	std::pmr::polymorphic_allocator<char> m_allocator{ &m_memory_resource };
 	std::pmr::unordered_map<uint64_t, std::pmr::string> m_lines{ m_allocator };
 
+	file_info m_file;
 	std::vector<std::string> m_error_messages{};
 	std::vector<error_record> m_errors{};
-	std::vector<file_info> m_files{};
 
 	void make_msg(std::pmr::string &buffer, size_t id, const error_record &record) const;
 	auto take_line(const std::string_view source, const error_record &record) const noexcept -> std::pmr::string;
-	auto get_file_path(const file_id id) const noexcept -> std::string_view;
 
 	static auto relative_to_line(const std::string_view src, uint32_t pos) -> uint16_t;
 	inline static auto code_value(const record_code record) noexcept -> uint32_t;
 	inline static auto code_type_name(const record_code record) noexcept -> std::string_view;
-	inline static auto merge_file_and_line(const error_record &record) noexcept -> uint64_t;
 };
 
 } // namespace lox

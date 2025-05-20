@@ -79,10 +79,9 @@ void print_literal(const lox::literal &lit) {
 }
 
 auto evaluate(const std::string_view file_path, const std::string_view script) -> exit_codes {
-	lox::error_handler errout{};
+	lox::error_handler errout{ std::string{ file_path }, script };
 
-	const auto file_id{ errout.register_file(file_path) };
-	lox::scanner scanner{ script, file_id, errout };
+	lox::scanner scanner{ script, errout };
 
 	std::printf("\n------------------------ SCANNING -----------------------\n\n");
 	auto output{ scanner.scan() };
@@ -115,7 +114,7 @@ auto evaluate(const std::string_view file_path, const std::string_view script) -
 
 	std::printf("\n------------------------ PARSING ------------------------\n\n");
 
-	lox::parser parser{ tokens, literals, file_id, errout };
+	lox::parser parser{ tokens, literals, errout };
 	auto expr{ parser.parse() };
 
 	std::printf("Parse Errors:\n");
@@ -130,7 +129,7 @@ auto evaluate(const std::string_view file_path, const std::string_view script) -
 
 	std::printf("\n----------------------- EXECUTION -----------------------\n\n");
 
-	lox::execution::syntax_tree_interpreter interpreter{ file_id, errout };
+	lox::execution::syntax_tree_interpreter interpreter{ errout };
 
 	const auto value{ interpreter.evaluate(expr) };
 	if (interpreter.runtime_error()) {

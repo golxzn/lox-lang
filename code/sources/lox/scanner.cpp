@@ -10,10 +10,9 @@
 
 namespace lox {
 
-scanner::scanner(const std::string_view script, file_id fileid, error_handler &err)
+scanner::scanner(const std::string_view script, error_handler &err)
 	: errout{ err }
 	, m_script{ lox::utils::strip(script) }
-	, m_file_id{ fileid }
 {}
 
 auto scanner::scan() -> output_type {
@@ -22,10 +21,9 @@ auto scanner::scan() -> output_type {
 	if (std::empty(m_script)) {
 		errout.report("No source was given!", error_record{
 			.code    = error_code::se_no_sources,
-			.file_id = m_file_id,
 			.line    = m_line,
-		}, m_script);
-		return std::move(output);
+		});
+		return output;
 	}
 
 	const auto end_pos{ end_position() };
@@ -45,7 +43,7 @@ auto scanner::scan() -> output_type {
 
 	output.tokens.emplace_back(m_line, position, invalid_literal_id, token_type::end_of_file);
 
-	return std::move(output);
+	return output;
 }
 
 auto scanner::end_position() const noexcept -> uint32_t {
@@ -147,11 +145,10 @@ auto scanner::parse_string_token(const uint32_t pos, output_type &output) -> uin
 
 		errout.report(R"(Unclosed string literal! No '"' was found)", error_record{
 			.code = error_code::se_broken_symmetry,
-			.file_id = m_file_id,
 			.line    = m_line,
 			.from    = pos,
 			.to      = static_cast<uint16_t>(pos + 1)
-		}, m_script);
+		});
 
 		return skip_till(';', pos + 1);
 	}
@@ -297,11 +294,10 @@ void scanner::make_error_unexpected_symbol(const uint32_t pos) const {
 	const std::string_view message{ std::begin(stack_string), std::size(stack_string) - 1ull };
 	errout.report(message, error_record{
 		.code    = error_code::se_no_sources,
-		.file_id = m_file_id,
 		.line    = m_line,
 		.from    = pos,
 		.to      = pos + 1u
-	}, m_script);
+	});
 }
 
 } // namespace lox

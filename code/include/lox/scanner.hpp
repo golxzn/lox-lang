@@ -12,7 +12,7 @@ namespace lox {
 struct token;
 struct literal;
 
-class scanner {
+class LOX_EXPORT scanner {
 public:
 	struct skip_info {
 		uint32_t skipped{};
@@ -24,16 +24,14 @@ public:
 		std::vector<literal> literals{};
 	};
 
-	explicit scanner(const std::string_view script, file_id file_id, error_handler &errs);
+	explicit scanner(const std::string_view script, error_handler &errs);
 
 	[[nodiscard]] auto scan() -> output_type;
 
 private:
 	error_handler &errout;
 	std::string_view m_script;
-	file_id m_file_id;
 	uint32_t m_line{};
-	bool m_failed{};
 
 	auto end_position() const noexcept -> uint32_t;
 

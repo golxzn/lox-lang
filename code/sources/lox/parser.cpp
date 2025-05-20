@@ -6,16 +6,10 @@
 
 namespace lox {
 
-parser::parser(
-	std::vector<token> tokens,
-	std::vector<literal> literals,
-	file_id file_id,
-	error_handler &errs
-) noexcept
+parser::parser(std::vector<token> tokens, std::vector<literal> literals, error_handler &errs) noexcept
 	: m_tokens{ std::move(tokens) }
 	, m_literals{ std::move(literals) }
 	, errout{ errs }
-	, m_file_id{ file_id }
 {}
 
 auto parser::parse() -> std::unique_ptr<expression> try {
@@ -133,7 +127,6 @@ auto parser::previous() const -> const token & {
 auto parser::make_error(std::string_view msg, error_code code, const token &tok) const -> error {
 	errout.report(msg, lox::error_record{
 		.code    = code,
-		.file_id = m_file_id,
 		.line    = tok.line,
 		.from    = tok.position,
 		.to      = tok.position + static_cast<uint32_t>(std::size(token_string(tok.type)))

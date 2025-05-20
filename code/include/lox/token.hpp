@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <string_view>
 
+#include "lox/export.hpp"
+
 namespace lox {
 
 enum class token_type : uint8_t {
@@ -34,7 +36,7 @@ enum class token_type : uint8_t {
 constexpr uint16_t invalid_literal_id{ (std::numeric_limits<uint16_t>::max)() };
 
 #pragma pack(push, 1)
-struct token {
+struct LOX_EXPORT token {
 	uint32_t line{};
 	uint32_t position{};
 	uint16_t literal_id{ invalid_literal_id };

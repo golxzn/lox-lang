@@ -5,7 +5,7 @@
 
 namespace lox::utils {
 
-class ast_printer final : public expression::visitor_interface {
+class LOX_EXPORT ast_printer final : public expression::visitor_interface {
 public:
 	~ast_printer() override = default;
 

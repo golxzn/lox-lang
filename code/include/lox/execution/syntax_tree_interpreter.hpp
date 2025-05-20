@@ -7,13 +7,13 @@
 
 namespace lox::execution {
 
-class syntax_tree_interpreter final : public expression::visitor_interface {
+class LOX_EXPORT syntax_tree_interpreter final : public expression::visitor_interface {
 public:
 	struct execution_error : public std::runtime_error {
 		using std::runtime_error::runtime_error;
 	};
 
-	syntax_tree_interpreter(file_id file, error_handler &handler) noexcept;
+	explicit syntax_tree_interpreter(error_handler &handler) noexcept;
 	~syntax_tree_interpreter() override = default;
 
 	[[nodiscard]] auto evaluate(const std::unique_ptr<expression> &expr) -> literal;
@@ -27,7 +27,6 @@ public:
 private:
 	literal m_output{};
 	error_handler &errout;
-	file_id m_file_id;
 	bool got_runtime_error{ false };
 
 	auto error_no_suitable(token_type op, const literal &value) const -> execution_error;

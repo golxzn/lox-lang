@@ -1,3 +1,6 @@
+#pragma once
+
+#include <string>
 #include <string_view>
 
 namespace lox::utils {
@@ -10,5 +13,7 @@ constexpr std::string_view whitespaces{ " \t\r\n" };
 	}
 	return std::string_view{};
 }
+
+[[nodiscard]] auto quoted(const std::string_view line, const std::string_view quote = "\"") -> std::string;
 
 } // namespace lox::utils

@@ -5,7 +5,7 @@
 
 namespace lox::utils {
 
-class rpn_printer final : public expression::visitor_interface {
+class LOX_EXPORT rpn_printer final : public expression::visitor_interface {
 public:
 	~rpn_printer() override = default;
 

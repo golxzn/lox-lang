@@ -3,6 +3,7 @@
 
 #include "lox/literal.hpp"
 #include "lox/utils/strhash.hpp"
+#include "lox/utils/strutils.hpp"
 
 namespace lox {
 
@@ -21,11 +22,11 @@ auto to_number_literal(const std::string_view str_value) -> literal {
 	const auto b{ std::begin(str_value) };
 	const auto e{ std::end(str_value) };
 
-	if (double val{}; fast_float::from_chars(b, e, val).ec == std::errc{}) {
+	if (int64_t val{}; fast_float::from_chars(b, e, val).ec == std::errc{}) {
 		return literal{ val };
 	}
 
-	if (int64_t val{}; fast_float::from_chars(b, e, val).ec == std::errc{}) {
+	if (double val{}; fast_float::from_chars(b, e, val).ec == std::errc{}) {
 		return literal{ val };
 	}
 
@@ -75,7 +76,7 @@ auto to_string(const literal &lit) -> std::string {
 		case boolean:  return *lit.as<bool>() ? "true" : "false";
 		case number:   return std::to_string(*lit.as<double>());
 		case integral: return std::to_string(*lit.as<int64_t>());
-		case string:   return *lit.as<std::string>();
+		case string:   return utils::quoted(*lit.as<std::string>());
 
 		default: break;
 	}

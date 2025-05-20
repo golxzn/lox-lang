@@ -11,18 +11,13 @@
 
 namespace lox {
 
-class parser {
+class LOX_EXPORT parser {
 public:
 	struct error : public std::runtime_error {
 		explicit error(std::string_view msg) noexcept : std::runtime_error{ std::data(msg) } {}
 	};
 
-	parser(
-		std::vector<token> tokens,
-		std::vector<literal> literals,
-		file_id file_id,
-		error_handler &errs
-	) noexcept;
+	parser(std::vector<token> tokens, std::vector<literal> literals, error_handler &errs) noexcept;
 
 	[[nodiscard]] auto parse() -> std::unique_ptr<expression>;
 
@@ -31,7 +26,6 @@ private:
 	std::vector<literal> m_literals;
 	error_handler &errout;
 	size_t m_current{};
-	file_id m_file_id{};
 
 	template<token_type ...Types>
 	auto iterate_through(auto next) -> std::unique_ptr<expression> {

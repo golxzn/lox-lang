@@ -124,8 +124,8 @@ struct operation<token_type::plus> {
 } // namespace
 
 
-syntax_tree_interpreter::syntax_tree_interpreter(file_id file, error_handler &handler) noexcept
-	: errout{ handler }, m_file_id{ file } {}
+syntax_tree_interpreter::syntax_tree_interpreter(error_handler &handler) noexcept
+	: errout{ handler } {}
 
 
 auto syntax_tree_interpreter::evaluate(const std::unique_ptr<expression> &expr) -> literal {
@@ -225,8 +225,7 @@ auto syntax_tree_interpreter::error_no_suitable(token_type op, const literal &lh
 
 auto syntax_tree_interpreter::error(error_code err_no, std::string_view msg) const -> execution_error {
 	errout.report(msg, error_record{
-		.code = err_no,
-		.file_id = m_file_id
+		.code = err_no
 	});
 	return execution_error{ std::data(msg) };
 }

@@ -4,6 +4,8 @@
 #include <variant>
 #include <string_view>
 
+#include "lox/export.hpp"
+
 namespace lox {
 
 enum class literal_type : uint8_t {
@@ -18,7 +20,7 @@ using literal_base = std::variant<std::monostate,
 	bool, double, int64_t, std::string
 >;
 
-struct literal : literal_base {
+struct LOX_EXPORT literal : public literal_base {
 	using literal_base::variant;
 
 	[[nodiscard]] auto is(literal_type type) const noexcept -> bool;
