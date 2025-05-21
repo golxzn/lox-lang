@@ -41,7 +41,7 @@ set_target_properties(${lox_target_name} PROPERTIES
 )
 
 target_compile_options(${lox_target_name} PRIVATE ${lox_compile_options})
-target_compile_definitions(${lox_target_name} PRIVATE ${lox_definitions})
+target_compile_definitions(${lox_target_name} PUBLIC ${lox_definitions})
 target_include_directories(${lox_target_name} PUBLIC
 	$<BUILD_INTERFACE:${lox_inc_dir}>
 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -74,6 +74,10 @@ add_subdirectory(${root}/libs)
 
 if(NOT CMAKE_SKIP_INSTALL_RULES)
 	include(lox-export)
+endif()
+
+if(LOX_BUILD_INTERPRETER)
+	add_subdirectory(${root}/interpreter)
 endif()
 
 if(LOX_BUILD_EXAMPLES)

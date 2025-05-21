@@ -1,6 +1,7 @@
 
 option(LOX_SILENT              "Hide lox messages"          ${PROJECT_IS_TOP_LEVEL})
 option(LOX_BUILD_EXAMPLES      "Build examples"             ${PROJECT_IS_TOP_LEVEL})
+option(LOX_BUILD_INTERPRETER   "Build lox interpreter"      ${PROJECT_IS_TOP_LEVEL})
 option(LOX_ENABLE_CCACHE       "Use ccache"                 ON)
 option(LOX_BUILD_MULTITHREADED "Enable multithreaded build" ON)
 set(LOX_BUILD_MULTITHREADED_CORES 0 CACHE STRING "Explicitly set the number of cores for multithreaded build (0 for auto)")

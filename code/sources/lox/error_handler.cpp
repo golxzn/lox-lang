@@ -32,9 +32,9 @@ void error_handler::make_msg(std::pmr::string &buffer, size_t id, const error_re
 
 	if (m_lines.contains(record.line)) {
 		std::format_to(out, "\n\n{:3} | {}\n", record.line, m_lines.at(record.line));
-		if (record.from != 0u && record.to != 0u) {
-			std::format_to(out, "    |{:>{}}{:^>{}}\n", "", record.from, "", record.to - record.from);
-			std::format_to(out, "    |{:>{}}", "", record.from);
+		if (record.to != 0u) {
+			std::format_to(out, "    | {:>{}}{:^>{}}\n", "", record.from, "", record.to - record.from);
+			std::format_to(out, "    | {:>{}}", "", record.from);
 		}
 	}
 

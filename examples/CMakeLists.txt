@@ -1,14 +1,11 @@
-project(lox_examples LANGUAGES CXX)
 
-# find_package(GolxznLox REQUIRED)
+set(cur_dir ${CMAKE_CURRENT_SOURCE_DIR})
+file(GLOB examples RELATIVE ${cur_dir} CONFIGURE_DEPENDS ${cur_dir}/**/CMakeLists.txt)
+list(TRANSFORM examples REPLACE "/CMakeLists.txt" "")
+list(REMOVE_DUPLICATES examples)
 
-set(target ${PROJECT_NAME}_examples)
+foreach(example IN LISTS examples)
+	add_subdirectory(${example})
+endforeach()
 
-add_executable(${target} ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
-target_link_libraries(${target} PUBLIC golxzn::lox)
-set_target_properties(${target} PROPERTIES
-	C_STANDARD ${lox_c_standard}
-	CXX_STANDARD ${lox_cxx_standard}
-	RUNTIME_OUTPUT_DIRECTORY ${root}/bin
-)
-
+unset(cur_dir)
