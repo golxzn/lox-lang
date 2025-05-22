@@ -28,6 +28,7 @@ enum class error_code : uint32_t {
 	evaluation_error_begin,
 	ee_literal_not_suitable_for_operation,
 	ee_runtime_error,
+	ee_missing_expression,
 	evaluation_error_end = 299,
 };
 

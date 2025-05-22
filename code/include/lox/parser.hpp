@@ -1,12 +1,11 @@
 #pragma once
 
-#include <vector>
 #include <concepts>
 #include <type_traits>
 
 #include "lox/token.hpp"
 #include "lox/literal.hpp"
-#include "lox/gen/expression.hpp"
+#include "lox/program.hpp"
 #include "lox/error_handler.hpp"
 
 namespace lox {
@@ -19,13 +18,22 @@ public:
 
 	parser(std::vector<token> tokens, std::vector<literal> literals, error_handler &errs) noexcept;
 
-	[[nodiscard]] auto parse() -> std::unique_ptr<expression>;
+	[[nodiscard]] auto parse() -> program;
 
 private:
 	std::vector<token> m_tokens;
 	std::vector<literal> m_literals;
 	error_handler &errout;
 	size_t m_current{};
+
+	auto stmt() -> std::unique_ptr<statement>;
+
+	template<std::derived_from<statement> Type>
+	auto make_stmt(auto content_gen) -> std::unique_ptr<statement> {
+		auto content{ std::invoke(content_gen, this) };
+		consume(token_type::semicolon, "Expected ';' after statement", peek());
+		return std::make_unique<Type>(std::move(content));
+	}
 
 	template<token_type ...Types>
 	auto iterate_through(auto next) -> std::unique_ptr<expression> {
@@ -61,6 +69,10 @@ private:
 	auto primary() -> std::unique_ptr<expression>;
 
 	void synchronize();
+
+	void consume(token_type type, std::string_view on_error,
+		const token &token, error_code code = error_code::pe_unexpected_token
+	);
 
 	auto advice() -> const token &;
 	auto check(token_type type) const -> bool;

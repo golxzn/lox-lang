@@ -35,7 +35,7 @@ auto scanner::scan() -> output_type {
 		int64_t{},
 	};
 
-	m_line = 1u;
+	m_line = 0u;
 	uint32_t position{};
 	while (position != end_pos) {
 		position = next_token(position, output);

@@ -55,7 +55,7 @@ auto evaluate(const std::string_view file_path, const std::string_view script) -
 	std::printf("\n------------------------ PARSING ------------------------\n\n");
 
 	lox::parser parser{ tokens, literals, errout };
-	auto expr{ parser.parse() };
+	auto program{ parser.parse() };
 
 	std::printf("Parse Errors:\n");
 	errout.export_records([](std::string_view err) {
@@ -63,16 +63,11 @@ auto evaluate(const std::string_view file_path, const std::string_view script) -
 	});
 	errout.clear();
 
-
-	std::printf("AST:\n");
-	std::printf("\t%s\n", std::data(lox::utils::ast_printer{}.print(expr)));
-
 	std::printf("\n----------------------- EXECUTION -----------------------\n\n");
 
 	lox::execution::syntax_tree_interpreter interpreter{ errout };
 
-	const auto value{ interpreter.evaluate(expr) };
-	if (interpreter.runtime_error()) {
+	if (const auto status{ interpreter.run(program) }; status != lox::execution::status::ok) {
 		std::printf("Runtime Errors:\n");
 		errout.export_records([](std::string_view err) {
 			std::printf("%.*s\n", static_cast<int32_t>(std::size(err)), std::data(err));
@@ -81,8 +76,6 @@ auto evaluate(const std::string_view file_path, const std::string_view script) -
 
 		return lox::utils::exit_codes::software;
 	}
-
-	std::printf("Output: %s\n", std::data(lox::to_string(value)));
 
 	return lox::utils::exit_codes::ok;
 }
@@ -130,7 +123,7 @@ auto run_file(const std::string_view path) -> lox::utils::exit_codes {
 
 	std::fseek(file, 0, SEEK_SET);
 
-	if (constexpr size_t stack_buffer_size{ 256 }; length < stack_buffer_size) {
+	if (constexpr long stack_buffer_size{ 256 }; length < stack_buffer_size) {
 		std::array<char, stack_buffer_size> buffer{};
 		const auto read_bytes{ std::fread(std::data(buffer), sizeof(char), length, file) };
 		std::fclose(file);
@@ -148,7 +141,7 @@ auto run_prompt() -> lox::utils::exit_codes {
 
 	for (std::string line{}; std::getline(std::cin, line); std::printf("> ")) {
 		const auto exit_code{ evaluate("console", line) };
-		std::printf("Result %X: %s\n", exit_code, std::data(exit_codes_name(exit_code)));
+		std::printf("Result %X: %s\n", static_cast<uint32_t>(exit_code), std::data(exit_codes_name(exit_code)));
 	}
 
 	return lox::utils::exit_codes::ok;

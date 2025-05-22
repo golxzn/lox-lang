@@ -3,6 +3,10 @@
 #include <format>
 #include <functional>
 
+#if defined(LOX_DEBUG)
+#include <cstdio>
+#endif // defined(LOX_DEBUG)
+
 #include <tl/expected.hpp>
 
 #include "lox/execution/syntax_tree_interpreter.hpp"
@@ -128,18 +132,41 @@ syntax_tree_interpreter::syntax_tree_interpreter(error_handler &handler) noexcep
 	: errout{ handler } {}
 
 
-auto syntax_tree_interpreter::evaluate(const std::unique_ptr<expression> &expr) -> literal {
+
+auto syntax_tree_interpreter::run(program &prog) -> status try {
+	for (const auto &stmt : prog) {
+		if (!stmt) [[unlikely]] {
+			return status::invalid_program;
+		}
+		execute(*stmt);
+	}
+	return status::ok;
+} catch (const execution_error &) {
+	return status::runtime_error;
+}
+
+auto syntax_tree_interpreter::evaluate(expression &expr) -> literal {
 	m_output = {};
-	if (expr) try {
-		expr->accept(*this);
+	try {
+		expr.accept(*this);
 	} catch (const execution_error &err) {
 		got_runtime_error = true;
 	}
 	return m_output;
 }
 
+void syntax_tree_interpreter::execute(statement &stmt) {
+	stmt.accept(*this);
+}
+
+#pragma region expression::visitor_interface methods
+
 void syntax_tree_interpreter::accept(const expression::unary &unary) {
-	auto value{ evaluate(unary.expr) };
+	if (!unary.expr) {
+		error(error_code::ee_missing_expression, "");
+	}
+
+	auto value{ evaluate(*unary.expr) };
 	if (!is_suitable_for(unary.op.type, value.type())) {
 		throw error_no_suitable(unary.op.type, value);
 	}
@@ -159,8 +186,12 @@ void syntax_tree_interpreter::accept(const expression::unary &unary) {
 }
 
 void syntax_tree_interpreter::accept(const expression::binary &expr) {
-	auto lhv{ evaluate(expr.left) };
-	auto rhv{ evaluate(expr.right) };
+	if (!expr.left || !expr.right) {
+		error(error_code::ee_missing_expression, "");
+	}
+
+	auto lhv{ evaluate(*expr.left) };
+	auto rhv{ evaluate(*expr.right) };
 	if (!is_suitable_for(expr.op.type, lhv.type(), rhv.type())) {
 		throw error_no_suitable(expr.op.type, lhv, rhv);
 	}
@@ -202,12 +233,45 @@ void syntax_tree_interpreter::accept(const expression::binary &expr) {
 }
 
 void syntax_tree_interpreter::accept(const expression::grouping &group) {
-	m_output = evaluate(group.expr);
+	if (group.expr) {
+		m_output = evaluate(*group.expr);
+	} else {
+		error(error_code::ee_missing_expression, "");
+	}
 }
 
 void syntax_tree_interpreter::accept(const expression::literal &value) {
 	m_output = value.value;
 }
+
+#pragma endregion expression::visitor_interface methods
+
+#pragma region statement::visitor_interface methods
+
+void syntax_tree_interpreter::accept(const statement::expression &expr) {
+	if (expr.expr) {
+		m_output = evaluate(*expr.expr);
+	} else {
+		error(error_code::ee_missing_expression, "");
+	}
+}
+
+#if defined(LOX_DEBUG)
+
+void syntax_tree_interpreter::accept(const statement::print &print) {
+	if (print.expr) {
+		m_output = evaluate(*print.expr);
+		std::fprintf(stdout, "%s\n", std::data(lox::to_string(m_output)));
+	} else {
+		error(error_code::ee_missing_expression, "");
+	}
+}
+
+#endif // defined(LOX_DEBUG)
+
+
+#pragma endregion statement::visitor_interface methods
+
 
 auto syntax_tree_interpreter::error_no_suitable(token_type op, const literal &value) const -> execution_error {
 	return error(error_code::ee_literal_not_suitable_for_operation,
@@ -262,11 +326,13 @@ auto syntax_tree_interpreter::is_suitable_for(token_type op, literal_type lhv, l
 	};
 
 	switch (op) {
-		case token_type::plus:
 		case token_type::minus: [[fallthrough]];
 		case token_type::slash: [[fallthrough]];
 		case token_type::star:
 			return both_numbers;
+
+		case token_type::plus:
+			return both_numbers || (lhv == literal_type::string && rhv == lhv);
 
 		case token_type::bang: [[fallthrough]];
 		case token_type::bang_equal: [[fallthrough]];

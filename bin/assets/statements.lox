@@ -1,0 +1,5 @@
+print "hello world";
+print "hello" + " " + "concat";
+print 3 * 4 == 12;
+print 100;
+print "no semicolon"

@@ -2,6 +2,19 @@ import os
 from io import TextIOWrapper
 from argparse import ArgumentParser, Namespace
 
+EXPRESSIONS: dict[str, str] = {
+	'unary'   : 'token op, std::unique_ptr<expression> expr',
+	'binary'  : 'token op, std::unique_ptr<expression> left, std::unique_ptr<expression> right',
+	'grouping': 'std::unique_ptr<expression> expr',
+	'literal' : 'lox::literal value'
+}
+
+STATEMENTS: dict[str, str] = {
+	'expression': 'std::unique_ptr<lox::expression> expr',
+	'LOX_DEBUG!print': 'std::unique_ptr<lox::expression> expr'
+}
+
+
 INCLUDE_DIR: str = 'include/lox/gen/'
 SOURCES_DIR: str = 'sources/lox/gen/'
 
@@ -29,24 +42,49 @@ CLOSE_NAMESPACE: str = '''
 
 SOURCE_BEGIN: str = '''#include "{header_file_path}"'''
 
+def split_conditions_and_class_name(cls_name: str) -> tuple[list[str], str]:
+	conditions: list[str] = cls_name.split('!')
+	class_name: str = conditions[-1]
+	conditions.remove(class_name)
+	return (conditions, class_name)
+
+def open_conditions(conditions: list[str], file: TextIOWrapper) -> None:
+	for condition in conditions:
+		file.write(f'#if defined({condition})\n')
+
+def close_conditions(conditions: list[str], file: TextIOWrapper) -> None:
+	for condition in conditions:
+		file.write(f'#endif // defined({condition})\n')
+
+
+
 def generate_base_class(file: TextIOWrapper, base_class: str, classes: dict[str, str]) -> None:
 	file.write(f'struct LOX_EXPORT {base_class} {{\n')
 	file.write(f'\tvirtual ~{base_class}() noexcept = default;\n\n')
 
 	for cls in classes:
-		file.write(f'\tstruct LOX_EXPORT {cls};\n')
+		(conditions, class_name) = split_conditions_and_class_name(cls)
+		open_conditions(conditions, file)
+		file.write(f'\tstruct LOX_EXPORT {class_name};\n')
+		close_conditions(conditions, file)
 
 	file.write('\n\tstruct visitor_interface {\n')
 	file.write('\t\tvirtual ~visitor_interface() noexcept = default;\n\n')
 
 	for cls in classes:
-		file.write(f'\t\tvirtual void accept(const {cls} &) {{ /* no impl required */ }}\n')
+		(conditions, class_name) = split_conditions_and_class_name(cls)
+		open_conditions(conditions, file)
+		file.write(f'\t\tvirtual void accept(const {class_name} &) {{ /* no impl required */ }}\n')
+		close_conditions(conditions, file)
 
 	file.write('\t};\n\n')
 	file.write('\tvirtual void accept(visitor_interface &visitor) = 0;\n')
 	file.write('\n};\n')
 
-def generate_derived_class(file: TextIOWrapper, base_class: str, class_name: str, fields: str) -> None:
+def generate_derived_class_definition(file: TextIOWrapper, base_class: str, cls_name: str, fields: str) -> None:
+	(conditions, class_name) = split_conditions_and_class_name(cls_name)
+
+	open_conditions(conditions, file)
 	file.write(f'struct LOX_EXPORT {base_class}::{class_name} final : public {base_class} {{\n')
 	file.write(f'\t{class_name}() = default;\n')
 
@@ -62,10 +100,38 @@ def generate_derived_class(file: TextIOWrapper, base_class: str, class_name: str
 		file.write('{};\n')
 
 	file.write('};\n')
+	close_conditions(conditions, file)
+
+def generate_derived_class_implementation(file: TextIOWrapper, base_class: str, cls_name: str, fields: str) -> None:
+	(conditions, class_name) = split_conditions_and_class_name(cls_name)
+
+	open_conditions(conditions, file)
+	file.write(f'\n{base_class}::{class_name}::{class_name}({fields}) noexcept')
+
+	INIT_LIST_TEMPLATE: str = '\n\t{sep} {name}{{ std::move({name}) }}'
+	SEP_LIST: list[str] = [',', ':']
+	fields_list: list[str] = fields.split(',')
+	first: bool = True
+	for field in fields_list:
+		name: str = field.split(' ')[-1].strip()
+		file.write(INIT_LIST_TEMPLATE.format(
+			sep  = SEP_LIST[first],
+			name = name
+		))
+		first = False
+
+	file.write(' {}\n\n')
+
+	file.write(f"void {base_class}::{class_name}::accept(visitor_interface &visitor) {{\n")
+	file.write('\tvisitor.accept(*this);\n')
+	file.write('}\n\n')
+	close_conditions(conditions, file)
+
 
 def define_ast(out_dir: str, includes: list[str], base_class: str, classes: dict[str, str]) -> str:
 	header_file_path: str = os.path.join(out_dir, INCLUDE_DIR, base_class + '.hpp').replace('\\', '/')
-	include_path: str = os.path.join(INCLUDE_DIR, base_class + '.hpp').replace('\\', '/')
+	include_path: str = os.path.join(INCLUDE_DIR.removeprefix('include/'), base_class + '.hpp').replace('\\', '/')
+
 	with open(header_file_path, 'w+') as header:
 		header.write(DISCLAIMER)
 		header.write(HEADER_BEGIN)
@@ -76,7 +142,7 @@ def define_ast(out_dir: str, includes: list[str], base_class: str, classes: dict
 		generate_base_class(header, base_class, classes)
 		for (cls, fields) in classes.items():
 			header.write('\n')
-			generate_derived_class(header, base_class, cls, fields)
+			generate_derived_class_definition(header, base_class, cls, fields)
 
 		header.write(CLOSE_NAMESPACE)
 
@@ -89,25 +155,7 @@ def define_ast(out_dir: str, includes: list[str], base_class: str, classes: dict
 		source.write(OPEN_NAMESPACE)
 
 		for (class_name, fields) in classes.items():
-			source.write(f'\n{base_class}::{class_name}::{class_name}({fields}) noexcept')
-
-			INIT_LIST_TEMPLATE: str = '\n\t{sep} {name}{{ std::move({name}) }}'
-			SEP_LIST: list[str] = [',', ':']
-			fields_list: list[str] = fields.split(',')
-			first: bool = True
-			for field in fields_list:
-				name: str = field.split(' ')[-1].strip()
-				source.write(INIT_LIST_TEMPLATE.format(
-					sep  = SEP_LIST[first],
-					name = name
-				))
-				first = False
-
-			source.write(' {}\n\n')
-
-			source.write(f"void {base_class}::{class_name}::accept(visitor_interface &visitor) {{\n")
-			source.write('\tvisitor.accept(*this);\n')
-			source.write('}\n\n')
+			generate_derived_class_implementation(source, base_class, class_name, fields)
 
 		source.write(CLOSE_NAMESPACE)
 
@@ -118,12 +166,8 @@ def main(args: Namespace) -> int:
 	os.makedirs(os.path.join(output_path, INCLUDE_DIR), exist_ok=True)
 	os.makedirs(os.path.join(output_path, SOURCES_DIR), exist_ok=True)
 
-	define_ast(output_path, [], 'expression', {
-		'unary'   : 'token op, std::unique_ptr<expression> expr',
-		'binary'  : 'token op, std::unique_ptr<expression> left, std::unique_ptr<expression> right',
-		'grouping': 'std::unique_ptr<expression> expr',
-		'literal' : 'lox::literal value'
-	})
+	include: str = define_ast(output_path, [], 'expression', EXPRESSIONS)
+	define_ast(output_path, [include], 'statement', STATEMENTS)
 
 	return 0
 
@@ -132,5 +176,5 @@ if __name__ == '__main__':
 		prog='generate_ast',
 		description='Utility to generate the abstract syntax tree C++ sources'
 	)
-	parser.add_argument('--output', help='The path to output directory')
+	parser.add_argument('--output', type=str,  help='The path to output directory')
 	exit(main(parser.parse_args()))

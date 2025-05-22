@@ -12,10 +12,22 @@ parser::parser(std::vector<token> tokens, std::vector<literal> literals, error_h
 	, errout{ errs }
 {}
 
-auto parser::parse() -> std::unique_ptr<expression> try {
-	return expr();
-} catch (const error &e) {
-	return nullptr;
+auto parser::parse() -> program {
+	program prog{};
+	while (!at_end()) {
+		prog.emplace_back(stmt());
+	}
+	return prog;
+}
+
+auto parser::stmt() -> std::unique_ptr<statement> {
+#if defined(LOX_DEBUG)
+	if (match<token_type::kw_print>()) {
+		return make_stmt<statement::print>(&parser::expr);
+	}
+#endif // defined(LOX_DEBUG)
+
+	return make_stmt<statement::expression>(&parser::expr);
 }
 
 auto parser::expr() -> std::unique_ptr<expression> {
@@ -71,10 +83,7 @@ auto parser::primary() -> std::unique_ptr<expression> {
 		const auto &token{ peek() };
 		auto expr_{ expr() };
 
-		if (!check(right_paren)) {
-			make_error("Expected ')' after expression", error_code::pe_broken_symmetry, token);
-		}
-		advice();
+		consume(right_paren, "Expected ')' after expression", token, error_code::pe_broken_symmetry);
 		return std::make_unique<expression::grouping>(std::move(expr_));
 	}
 
@@ -100,6 +109,13 @@ void parser::synchronize() {
 
 		advice();
 	} while (!at_end());
+}
+
+void parser::consume(token_type type, std::string_view on_error, const token &tok, error_code code) {
+	if (!check(type)) {
+		make_error(on_error, code, tok);
+	}
+	advice();
 }
 
 auto parser::advice() -> const token & {
