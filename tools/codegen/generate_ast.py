@@ -3,14 +3,17 @@ from io import TextIOWrapper
 from argparse import ArgumentParser, Namespace
 
 EXPRESSIONS: dict[str, str] = {
-	'unary'   : 'token op, std::unique_ptr<expression> expr',
-	'binary'  : 'token op, std::unique_ptr<expression> left, std::unique_ptr<expression> right',
-	'grouping': 'std::unique_ptr<expression> expr',
-	'literal' : 'lox::literal value'
+	'unary'     : 'token op, std::unique_ptr<expression> expr',
+	'binary'    : 'token op, std::unique_ptr<expression> left, std::unique_ptr<expression> right',
+	'grouping'  : 'std::unique_ptr<expression> expr',
+	'literal'   : 'lox::literal value',
+	'identifier': 'token name'
 }
 
 STATEMENTS: dict[str, str] = {
-	'expression': 'std::unique_ptr<lox::expression> expr',
+	'expression'     : 'std::unique_ptr<lox::expression> expr',
+	'variable'       : 'token identifier, std::unique_ptr<lox::expression> initializer',
+	'constant'       : 'token identifier, std::unique_ptr<lox::expression> initializer',
 	'LOX_DEBUG!print': 'std::unique_ptr<lox::expression> expr'
 }
 

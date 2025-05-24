@@ -5,9 +5,10 @@
 #include <type_traits>
 #include <string_view>
 
+#include "lox/types.hpp"
+
 namespace lox::utils {
 
-using hash_type = uint32_t;
 constexpr hash_type offset_basis{ 0x811C9DC5 };
 constexpr hash_type FNV_prime{ 0x01000193 };
 

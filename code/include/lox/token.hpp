@@ -26,7 +26,7 @@ enum class token_type : uint8_t {
 	identifier, string, number, boolean, null,
 
 	// keywords
-	kw_var,
+	kw_var, kw_const,
 	kw_and, kw_or, kw_if, kw_else, kw_while, kw_for,
 	kw_fun, kw_return, kw_class, kw_this, kw_super,
 
@@ -37,16 +37,34 @@ enum class token_type : uint8_t {
 	end_of_file = 0xFFu
 };
 
-constexpr uint16_t invalid_literal_id{ (std::numeric_limits<uint16_t>::max)() };
+constexpr uint16_t invalid_id{ (std::numeric_limits<uint16_t>::max)() };
 
 #pragma pack(push, 1)
 struct LOX_EXPORT token {
 	uint32_t line{};
 	uint32_t position{};
-	uint16_t literal_id{ invalid_literal_id };
+	uint16_t literal_id{ invalid_id };
+	uint16_t lexeme_id{ invalid_id };
 	token_type type{ token_type::invalid };
+
+	[[nodiscard]] constexpr auto operator==(const token &other) const noexcept -> bool = default;
 };
 #pragma pack(pop)
+
+[[nodiscard]] constexpr auto token_hash(token tok) noexcept -> uint64_t {
+	const auto type_and_id_hash{
+		(static_cast<uint64_t>(tok.type) << 16) | static_cast<uint64_t>(tok.literal_id)
+	};
+
+	return ((static_cast<uint64_t>(tok.line) << 32) | static_cast<uint64_t>(tok.position))
+		^ ((type_and_id_hash << 32) | type_and_id_hash);
+}
+
+struct token_hasher {
+	[[nodiscard]] constexpr auto operator()(token tok) const noexcept -> uint64_t {
+		return token_hash(tok);
+	}
+};
 
 [[nodiscard]] constexpr auto keyword_name(const token_type keyword) noexcept -> std::string_view {
 	using namespace std::string_view_literals;
@@ -58,6 +76,7 @@ struct LOX_EXPORT token {
 
 	// keywords
 		case kw_var:        return "var"sv;
+		case kw_const:      return "const"sv;
 		case kw_and:        return "and"sv;
 		case kw_or:         return "or"sv;
 		case kw_if:         return "if"sv;
@@ -168,6 +187,8 @@ struct LOX_EXPORT token {
 }
 
 [[nodiscard]] auto from_keyword(const std::string_view name) noexcept -> token_type;
+
+[[nodiscard]] auto name_from_script(const token &tok, const std::string_view script) noexcept -> std::string_view;
 
 namespace token_traits {
 

@@ -38,6 +38,8 @@ private:
 	}
 };
 
+const literal null_literal{};
+
 [[nodiscard]] auto to_number_literal(const std::string_view str_value) -> literal;
 [[nodiscard]] auto to_literal(const std::string_view str_value) -> literal;
 [[nodiscard]] auto to_string(const literal &lit) -> std::string;

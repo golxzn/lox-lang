@@ -1,0 +1,4 @@
+var lhv{ "hello" };
+const rhv{ " world" };
+
+print lhv + rhv;

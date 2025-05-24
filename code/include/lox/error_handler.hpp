@@ -23,12 +23,15 @@ enum class error_code : uint32_t {
 	pe_unexpected_token,
 	pe_broken_symmetry,       /// The symmetry character like () or {} was not closed
 	pe_missing_literal,
+	pe_missing_const_initialization,
 	parser_error_end = 199,
 
 	evaluation_error_begin,
 	ee_literal_not_suitable_for_operation,
 	ee_runtime_error,
 	ee_missing_expression,
+	ee_undefined_identifier,
+	ee_identifier_already_exists,
 	evaluation_error_end = 299,
 };
 

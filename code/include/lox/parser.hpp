@@ -3,9 +3,8 @@
 #include <concepts>
 #include <type_traits>
 
-#include "lox/token.hpp"
-#include "lox/literal.hpp"
 #include "lox/program.hpp"
+#include "lox/context.hpp"
 #include "lox/error_handler.hpp"
 
 namespace lox {
@@ -16,15 +15,18 @@ public:
 		explicit error(std::string_view msg) noexcept : std::runtime_error{ std::data(msg) } {}
 	};
 
-	parser(std::vector<token> tokens, std::vector<literal> literals, error_handler &errs) noexcept;
+	parser(const context &ctx, error_handler &errs) noexcept;
 
 	[[nodiscard]] auto parse() -> program;
 
 private:
-	std::vector<token> m_tokens;
-	std::vector<literal> m_literals;
+	const context &ctx;
 	error_handler &errout;
 	size_t m_current{};
+
+	auto declaration() -> std::unique_ptr<statement>;
+	auto variable_declaration() -> std::unique_ptr<statement>;
+	auto constant_declaration() -> std::unique_ptr<statement>;
 
 	auto stmt() -> std::unique_ptr<statement>;
 
@@ -70,9 +72,9 @@ private:
 
 	void synchronize();
 
-	void consume(token_type type, std::string_view on_error,
-		const token &token, error_code code = error_code::pe_unexpected_token
-	);
+	auto consume(token_type type, std::string_view on_error,
+		const token &tok, error_code code = error_code::pe_unexpected_token
+	) -> const token &;
 
 	auto advice() -> const token &;
 	auto check(token_type type) const -> bool;

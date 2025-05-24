@@ -5,6 +5,8 @@
 
 #include "lox/program.hpp"
 #include "lox/error_handler.hpp"
+#include "lox/lexeme_database.hpp"
+#include "lox/execution/environment.hpp"
 
 namespace lox::execution {
 
@@ -23,7 +25,7 @@ public:
 		using std::runtime_error::runtime_error;
 	};
 
-	explicit syntax_tree_interpreter(error_handler &handler) noexcept;
+	syntax_tree_interpreter(const lexeme_database &lexemes, error_handler &handler) noexcept;
 	~syntax_tree_interpreter() override = default;
 
 	[[nodiscard]] auto run(program &prog) -> status;
@@ -38,12 +40,15 @@ public:
 	void accept(const expression::binary &binary) override;
 	void accept(const expression::grouping &group) override;
 	void accept(const expression::literal &value) override;
+	void accept(const expression::identifier &id) override;
 
 #pragma endregion expression::visitor_interface methods
 
 #pragma region statement::visitor_interface methods
 
 	void accept(const statement::expression &expr) override;
+	void accept(const statement::variable &var) override;
+	void accept(const statement::constant &con) override;
 
 #if defined(LOX_DEBUG)
 	void accept(const statement::print &print) override;
@@ -53,8 +58,10 @@ public:
 
 
 private:
+	environment m_env{};
 	literal m_output{};
-	error_handler &errout;
+	std::reference_wrapper<const lexeme_database> lexemes;
+	std::reference_wrapper<error_handler> errout;
 	bool got_runtime_error{ false };
 
 	auto error_no_suitable(token_type op, const literal &value) const -> execution_error;

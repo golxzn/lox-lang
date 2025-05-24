@@ -24,9 +24,7 @@ auto evaluate(const std::string_view file_path, const std::string_view script) -
 	lox::scanner scanner{ script, errout };
 
 	std::printf("\n------------------------ SCANNING -----------------------\n\n");
-	auto output{ scanner.scan() };
-
-	const auto [tokens, literals]{ std::move(output) };
+	const auto ctx{ scanner.scan() };
 
 	std::printf("Scan Errors:\n");
 	errout.export_records([](std::string_view err) {
@@ -35,18 +33,18 @@ auto evaluate(const std::string_view file_path, const std::string_view script) -
 	errout.clear();
 
 	std::printf("\nLiterals:\n");
-	for (size_t i{}; i < std::size(literals); ++i) {
+	for (size_t i{}; i < std::size(ctx.literals); ++i) {
 		std::printf("%.3zu | ", i);
-		print_literal(literals[i]);
+		print_literal(ctx.literals[i]);
 		std::printf("\n");
 	}
 
 	std::printf("\nTokens:\n");
 
-	for (const auto &token : tokens) {
+	for (const auto &token : ctx.tokens) {
 		std::printf("at %.3u is %s", token.position, std::data(lox::token_name(token.type)));
-		if (lox::invalid_literal_id != token.literal_id) {
-			print_literal(literals.at(token.literal_id));
+		if (lox::invalid_id != token.literal_id) {
+			print_literal(ctx.literals.at(token.literal_id));
 		}
 		std::printf("\n");
 	}
@@ -54,7 +52,7 @@ auto evaluate(const std::string_view file_path, const std::string_view script) -
 
 	std::printf("\n------------------------ PARSING ------------------------\n\n");
 
-	lox::parser parser{ tokens, literals, errout };
+	lox::parser parser{ ctx, errout };
 	auto program{ parser.parse() };
 
 	std::printf("Parse Errors:\n");
@@ -65,7 +63,7 @@ auto evaluate(const std::string_view file_path, const std::string_view script) -
 
 	std::printf("\n----------------------- EXECUTION -----------------------\n\n");
 
-	lox::execution::syntax_tree_interpreter interpreter{ errout };
+	lox::execution::syntax_tree_interpreter interpreter{ ctx.lexemes, errout };
 
 	if (const auto status{ interpreter.run(program) }; status != lox::execution::status::ok) {
 		std::printf("Runtime Errors:\n");

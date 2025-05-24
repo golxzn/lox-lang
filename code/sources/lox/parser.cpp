@@ -6,18 +6,76 @@
 
 namespace lox {
 
-parser::parser(std::vector<token> tokens, std::vector<literal> literals, error_handler &errs) noexcept
-	: m_tokens{ std::move(tokens) }
-	, m_literals{ std::move(literals) }
+parser::parser(const context &ctx, error_handler &errs) noexcept
+	: ctx{ ctx }
 	, errout{ errs }
 {}
 
 auto parser::parse() -> program {
 	program prog{};
 	while (!at_end()) {
-		prog.emplace_back(stmt());
+		prog.emplace_back(declaration());
 	}
 	return prog;
+}
+
+auto parser::declaration() -> std::unique_ptr<statement> {
+	try {
+		if (match<token_type::kw_var>()) {
+			return variable_declaration();
+		}
+		if (match<token_type::kw_const>()) {
+			return constant_declaration();
+		}
+
+		return stmt();
+	} catch (const error &e) {
+		synchronize();
+	}
+	return nullptr;
+}
+
+auto parser::variable_declaration() -> std::unique_ptr<statement> {
+	// var IDENTIFIER[: str][{ expression }];
+
+	auto identifier{ consume(token_type::identifier, "Expected variable name", peek()) };
+
+	std::unique_ptr<expression> expr_{};
+	if (match<token_type::left_brace>()) {
+		const auto &init_start{ peek() };
+		expr_ = expr();
+		consume(token_type::right_brace, "Missed '}' brace during variable initialization",
+			init_start, error_code::pe_broken_symmetry
+		);
+	}
+
+	match<token_type::semicolon>(); // Skip it if presented. No one cares
+
+	return std::make_unique<statement::variable>(identifier, std::move(expr_));
+}
+
+auto parser::constant_declaration() -> std::unique_ptr<statement> {
+	auto identifier{ consume(token_type::identifier, "Expected variable name", peek()) };
+
+	consume(token_type::left_brace,
+		"Missed initialization braces for constant! Constant have to be initialized",
+		peek(), error_code::pe_missing_const_initialization
+	);
+
+	std::unique_ptr<expression> expr_{};
+	if (!match<token_type::right_brace>()) {
+		const auto &init_start{ peek() };
+		expr_ = expr();
+		consume(token_type::right_brace, "Missed '}' brace during variable initialization",
+			init_start, error_code::pe_broken_symmetry
+		);
+	} else {
+		expr_ = std::make_unique<expression::literal>(null_literal);
+	}
+
+	match<token_type::semicolon>();
+
+	return std::make_unique<statement::constant>(identifier, std::move(expr_));
 }
 
 auto parser::stmt() -> std::unique_ptr<statement> {
@@ -68,8 +126,8 @@ auto parser::primary() -> std::unique_ptr<expression> {
 	if (match<string, number, boolean, null>()) {
 		const auto &token{ previous() };
 		const auto id{ token.literal_id };
-		if (id < std::size(m_literals)) {
-			return std::make_unique<expression::literal>(m_literals.at(id));
+		if (id < std::size(ctx.literals)) {
+			return std::make_unique<expression::literal>(ctx.literals.at(id));
 		}
 		throw make_error(
 			std::format(R"(Missing literal #{} of the "{}" token!)",
@@ -77,6 +135,10 @@ auto parser::primary() -> std::unique_ptr<expression> {
 			),
 			error_code::pe_missing_literal, token
 		);
+	}
+
+	if (match<identifier>()) {
+		return std::make_unique<expression::identifier>(previous());
 	}
 
 	if (match<left_paren>()) {
@@ -111,11 +173,11 @@ void parser::synchronize() {
 	} while (!at_end());
 }
 
-void parser::consume(token_type type, std::string_view on_error, const token &tok, error_code code) {
+auto parser::consume(token_type type, std::string_view on_error, const token &tok, error_code code) -> const token & {
 	if (!check(type)) {
 		make_error(on_error, code, tok);
 	}
-	advice();
+	return advice();
 }
 
 auto parser::advice() -> const token & {
@@ -133,11 +195,11 @@ auto parser::at_end() const -> bool {
 }
 
 auto parser::peek() const -> const token & {
-	return m_tokens.at(m_current);
+	return ctx.tokens.at(m_current);
 }
 
 auto parser::previous() const -> const token & {
-	return m_tokens.at(m_current - 1ull);
+	return ctx.tokens.at(m_current - 1ull);
 }
 
 auto parser::make_error(std::string_view msg, error_code code, const token &tok) const -> error {

@@ -41,7 +41,7 @@ auto scanner::scan() -> output_type {
 		position = next_token(position, output);
 	}
 
-	output.tokens.emplace_back(m_line, position, invalid_literal_id, token_type::end_of_file);
+	output.tokens.emplace_back(m_line, position, invalid_id, invalid_id, token_type::end_of_file);
 
 	return output;
 }
@@ -57,7 +57,7 @@ auto scanner::next_token(uint32_t pos, output_type &output) -> uint32_t {
 
 	const auto symbol{ m_script[pos] };
 	const auto add_token{ [&tokens{ output.tokens }, line{ m_line }, pos] (auto type, uint32_t offset = 1u) {
-		tokens.emplace_back(line, pos, invalid_literal_id, type);
+		tokens.emplace_back(line, pos, invalid_id, invalid_id, type);
 		return pos + offset;
 	} };
 	const auto next_is{ [&script{ m_script }, pos, end{ end_position() }](const auto expected) {
@@ -154,7 +154,7 @@ auto scanner::parse_string_token(const uint32_t pos, output_type &output) -> uin
 	}
 
 	const auto id{ emplace_literal(std::string{ m_script.substr(pos + 1u, cur - pos - 1u) }, output.literals) };
-	output.tokens.emplace_back(m_line, pos, id, token_type::string);
+	output.tokens.emplace_back(m_line, pos, id, invalid_id, token_type::string);
 
 	m_line += lines_count;
 
@@ -179,7 +179,7 @@ auto scanner::parse_number_token(const uint32_t pos, output_type &output) -> uin
 	}
 
 	const auto id{ emplace_literal(to_number_literal(m_script.substr(pos, cur - pos)), output.literals) };
-	output.tokens.emplace_back(m_line, pos, id, token_type::number);
+	output.tokens.emplace_back(m_line, pos, id, invalid_id, token_type::number);
 
 	return cur;
 }
@@ -191,9 +191,14 @@ auto scanner::parse_identifier_token(uint32_t pos, output_type &output) -> uint3
 	while (cur != end && (std::isalnum(m_script[cur]) || m_script[cur] == '_')) {
 		++cur;
 	}
-	const auto identifier{ m_script.substr(pos, cur - pos) };
+	const auto lexeme{ m_script.substr(pos, cur - pos) };
+	const auto type{ from_keyword(lexeme) };
+	uint16_t lexeme_id{ invalid_id };
+	if (type == token_type::identifier) {
+		lexeme_id = output.lexemes.add(lexeme);
+	}
 
-	output.tokens.emplace_back(m_line, pos, invalid_literal_id, from_keyword(identifier));
+	output.tokens.emplace_back(m_line, pos, invalid_id, lexeme_id, type);
 
 	return cur;
 }
@@ -220,19 +225,19 @@ auto scanner::try_parse_null_or_boolean(uint32_t pos, output_type &output) -> st
 		using namespace utils::fnv1a_literals;
 		case "null"_fnv1a:
 			output.tokens.emplace_back(
-				m_line, pos, emplace_literal({}, output.literals), token_type::null
+				m_line, pos, emplace_literal({}, output.literals), invalid_id, token_type::null
 			);
 			break;
 
 		case "true"_fnv1a:
 			output.tokens.emplace_back(
-				m_line, pos, emplace_literal(true, output.literals), token_type::boolean
+				m_line, pos, emplace_literal(true, output.literals), invalid_id, token_type::boolean
 			);
 			break;
 
 		case "false"_fnv1a:
 			output.tokens.emplace_back(
-				m_line, pos, emplace_literal(false, output.literals), token_type::boolean
+				m_line, pos, emplace_literal(false, output.literals), invalid_id, token_type::boolean
 			);
 			break;
 

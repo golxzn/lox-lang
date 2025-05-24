@@ -12,7 +12,7 @@
 				"program": "${command:cmake.launchTargetPath}",
 				"cwd": "${workspaceFolder}/bin",
 				"stopAtEntry": false,
-				"args": [ "assets/statements.lox" ],
+				"args": [ "assets/variables.lox" ],
 				"linux": {
 					"MIMode": "gdb",
 					"miDebuggerPath": "gdb"

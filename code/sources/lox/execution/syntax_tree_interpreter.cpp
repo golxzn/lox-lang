@@ -128,10 +128,8 @@ struct operation<token_type::plus> {
 } // namespace
 
 
-syntax_tree_interpreter::syntax_tree_interpreter(error_handler &handler) noexcept
-	: errout{ handler } {}
-
-
+syntax_tree_interpreter::syntax_tree_interpreter(const lexeme_database &lexemes, error_handler &handler) noexcept
+	: lexemes{ lexemes }, errout{ handler } {}
 
 auto syntax_tree_interpreter::run(program &prog) -> status try {
 	for (const auto &stmt : prog) {
@@ -244,6 +242,17 @@ void syntax_tree_interpreter::accept(const expression::literal &value) {
 	m_output = value.value;
 }
 
+void syntax_tree_interpreter::accept(const expression::identifier &id) {
+	if (m_env.contains(id.name)) {
+		m_output = m_env.look_up(id.name);
+		return;
+	}
+
+	error(error_code::ee_undefined_identifier, std::format(
+		R"(Undefined identifier "{}")", name_from_script(id.name, "")
+	));
+}
+
 #pragma endregion expression::visitor_interface methods
 
 #pragma region statement::visitor_interface methods
@@ -255,6 +264,34 @@ void syntax_tree_interpreter::accept(const statement::expression &expr) {
 		error(error_code::ee_missing_expression, "");
 	}
 }
+
+void syntax_tree_interpreter::accept(const statement::variable &var) {
+
+	if (m_env.contains(var.identifier)) {
+		error(error_code::ee_identifier_already_exists, std::format(
+			R"(Variable "{}" is already defined)", name_from_script(var.identifier, "")
+		));
+	}
+	std::ignore = m_env.define_variable(var.identifier,
+		var.initializer ? evaluate(*var.initializer) : null_literal
+	);
+}
+
+void syntax_tree_interpreter::accept(const statement::constant &con) {
+	if (m_env.contains(con.identifier)) {
+		error(error_code::ee_identifier_already_exists, std::format(
+			R"(Constant "{}" is already defined)", name_from_script(con.identifier, "")
+		));
+	}
+	if (!con.initializer) {
+		error(error_code::ee_missing_expression, std::format(
+			R"(Constant "{}" wasn't initialized)", name_from_script(con.identifier, "")
+		));
+	}
+
+	std::ignore = m_env.define_constant(con.identifier, evaluate(*con.initializer));
+}
+
 
 #if defined(LOX_DEBUG)
 
@@ -288,7 +325,7 @@ auto syntax_tree_interpreter::error_no_suitable(token_type op, const literal &lh
 }
 
 auto syntax_tree_interpreter::error(error_code err_no, std::string_view msg) const -> execution_error {
-	errout.report(msg, error_record{
+	errout.get().report(msg, error_record{
 		.code = err_no
 	});
 	return execution_error{ std::data(msg) };

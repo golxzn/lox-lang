@@ -5,6 +5,7 @@
 #include <string_view>
 #include <tl/expected.hpp>
 
+#include "lox/context.hpp"
 #include "lox/error_handler.hpp"
 
 namespace lox {
@@ -14,14 +15,11 @@ struct literal;
 
 class LOX_EXPORT scanner {
 public:
+	using output_type = context;
+
 	struct skip_info {
 		uint32_t skipped{};
 		uint32_t new_lines{};
-	};
-
-	struct output_type {
-		std::vector<token> tokens{};
-		std::vector<literal> literals{};
 	};
 
 	explicit scanner(const std::string_view script, error_handler &errs);
