@@ -63,6 +63,7 @@ private:
 	}
 
 	auto expr() -> std::unique_ptr<expression>;
+	auto assignment() -> std::unique_ptr<expression>;
 	auto equality() -> std::unique_ptr<expression>;
 	auto comparison() -> std::unique_ptr<expression>;
 	auto term() -> std::unique_ptr<expression>;

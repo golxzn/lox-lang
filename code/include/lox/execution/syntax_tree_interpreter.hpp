@@ -37,6 +37,7 @@ public:
 #pragma region expression::visitor_interface methods
 
 	void accept(const expression::unary &unary) override;
+	void accept(const expression::assignment &assign) override;
 	void accept(const expression::binary &binary) override;
 	void accept(const expression::grouping &group) override;
 	void accept(const expression::literal &value) override;

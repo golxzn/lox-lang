@@ -4,6 +4,7 @@ from argparse import ArgumentParser, Namespace
 
 EXPRESSIONS: dict[str, str] = {
 	'unary'     : 'token op, std::unique_ptr<expression> expr',
+	'assignment': 'token name, std::unique_ptr<expression> value',
 	'binary'    : 'token op, std::unique_ptr<expression> left, std::unique_ptr<expression> right',
 	'grouping'  : 'std::unique_ptr<expression> expr',
 	'literal'   : 'lox::literal value',
@@ -59,11 +60,21 @@ def close_conditions(conditions: list[str], file: TextIOWrapper) -> None:
 	for condition in conditions:
 		file.write(f'#endif // defined({condition})\n')
 
+def generate_tags(file: TextIOWrapper, classes: dict[str, str]) -> None:
+	file.write("\tenum class tag : uint8_t {\n")
+	for cls in classes:
+		(conditions, class_name) = split_conditions_and_class_name(cls)
+		open_conditions(conditions, file)
+		file.write(f'\t\t {class_name},\n')
+		close_conditions(conditions, file)
 
+	file.write("\t};\n")
 
 def generate_base_class(file: TextIOWrapper, base_class: str, classes: dict[str, str]) -> None:
 	file.write(f'struct LOX_EXPORT {base_class} {{\n')
 	file.write(f'\tvirtual ~{base_class}() noexcept = default;\n\n')
+
+	generate_tags(file, classes)
 
 	for cls in classes:
 		(conditions, class_name) = split_conditions_and_class_name(cls)
@@ -82,6 +93,7 @@ def generate_base_class(file: TextIOWrapper, base_class: str, classes: dict[str,
 
 	file.write('\t};\n\n')
 	file.write('\tvirtual void accept(visitor_interface &visitor) = 0;\n')
+	file.write('\t[[nodiscard]] virtual auto type() const noexcept -> tag = 0;\n')
 	file.write('\n};\n')
 
 def generate_derived_class_definition(file: TextIOWrapper, base_class: str, cls_name: str, fields: str) -> None:
@@ -96,6 +108,7 @@ def generate_derived_class_definition(file: TextIOWrapper, base_class: str, cls_
 	file.write(f'\t~{class_name}() override = default;\n\n')
 
 	file.write('\tvoid accept(visitor_interface &visitor) override;\n\n')
+	file.write(f'\t[[nodiscard]] auto type() const noexcept -> tag override {{ return tag::{class_name}; }}\n\n')
 
 	for field in fields.split(','):
 		file.write('\t')

@@ -2,3 +2,6 @@ var lhv{ "hello" };
 const rhv{ " world" };
 
 print lhv + rhv;
+
+lhv = "destroy";
+print lhv + rhv;

@@ -24,6 +24,7 @@ enum class error_code : uint32_t {
 	pe_broken_symmetry,       /// The symmetry character like () or {} was not closed
 	pe_missing_literal,
 	pe_missing_const_initialization,
+	pe_lvalue_assignment,
 	parser_error_end = 199,
 
 	evaluation_error_begin,

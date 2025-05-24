@@ -89,7 +89,25 @@ auto parser::stmt() -> std::unique_ptr<statement> {
 }
 
 auto parser::expr() -> std::unique_ptr<expression> {
-	return equality();
+	return assignment();
+}
+
+auto parser::assignment() -> std::unique_ptr<expression> {
+	auto expr_{ equality() };
+
+	if (match<token_type::equal>()) {
+		const auto &equals_token{ previous() };
+		if (auto value{ assignment() }; expr_->type() != expression::tag::assignment) {
+			return std::make_unique<expression::assignment>(
+				static_cast<const expression::identifier *>(expr_.get())->name,
+				std::move(value)
+			);
+		}
+
+		make_error("Invalid assignment target.", lox::error_code::pe_lvalue_assignment, equals_token);
+	}
+
+	return expr_;
 }
 
 auto parser::equality() -> std::unique_ptr<expression> {

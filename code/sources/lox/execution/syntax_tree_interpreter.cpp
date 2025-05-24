@@ -183,6 +183,16 @@ void syntax_tree_interpreter::accept(const expression::unary &unary) {
 	m_output = std::move(value);
 }
 
+void syntax_tree_interpreter::accept(const expression::assignment &assign) {
+	if (m_env.contains(assign.name) && m_env.assign(assign.name, evaluate(*assign.value))) {
+		return;
+	}
+
+	error(error_code::ee_undefined_identifier, std::format(
+		R"(Undefined variable "{}")", lexemes.get().get(assign.name.lexeme_id)
+	));
+}
+
 void syntax_tree_interpreter::accept(const expression::binary &expr) {
 	if (!expr.left || !expr.right) {
 		error(error_code::ee_missing_expression, "");
@@ -249,7 +259,7 @@ void syntax_tree_interpreter::accept(const expression::identifier &id) {
 	}
 
 	error(error_code::ee_undefined_identifier, std::format(
-		R"(Undefined identifier "{}")", name_from_script(id.name, "")
+		R"(Undefined identifier "{}")", lexemes.get().get(id.name.lexeme_id)
 	));
 }
 
@@ -266,10 +276,9 @@ void syntax_tree_interpreter::accept(const statement::expression &expr) {
 }
 
 void syntax_tree_interpreter::accept(const statement::variable &var) {
-
 	if (m_env.contains(var.identifier)) {
 		error(error_code::ee_identifier_already_exists, std::format(
-			R"(Variable "{}" is already defined)", name_from_script(var.identifier, "")
+			R"(Variable "{}" is already defined)", lexemes.get().get(var.identifier.lexeme_id)
 		));
 	}
 	std::ignore = m_env.define_variable(var.identifier,
@@ -280,12 +289,12 @@ void syntax_tree_interpreter::accept(const statement::variable &var) {
 void syntax_tree_interpreter::accept(const statement::constant &con) {
 	if (m_env.contains(con.identifier)) {
 		error(error_code::ee_identifier_already_exists, std::format(
-			R"(Constant "{}" is already defined)", name_from_script(con.identifier, "")
+			R"(Constant "{}" is already defined)", lexemes.get().get(con.identifier.lexeme_id)
 		));
 	}
 	if (!con.initializer) {
 		error(error_code::ee_missing_expression, std::format(
-			R"(Constant "{}" wasn't initialized)", name_from_script(con.identifier, "")
+			R"(Constant "{}" wasn't initialized)", lexemes.get().get(con.identifier.lexeme_id)
 		));
 	}
 
