@@ -10,13 +10,13 @@ constexpr std::string_view whitespaces{ " \t\r\n" };
 struct string_hash {
 	using is_transparent = void;
 
-	[[nodiscard]] constexpr auto operator()(const char *txt) const noexcept -> size_t {
+	[[nodiscard]] auto operator()(const char *txt) const noexcept -> size_t {
 		return std::hash<std::string_view>{}(txt);
 	}
-	[[nodiscard]] constexpr auto operator()(std::string_view txt) const noexcept -> size_t {
+	[[nodiscard]] auto operator()(std::string_view txt) const noexcept -> size_t {
 		return std::hash<std::string_view>{}(txt);
 	}
-	[[nodiscard]] constexpr auto operator()(const std::string &txt) const noexcept -> size_t {
+	[[nodiscard]] auto operator()(const std::string &txt) const noexcept -> size_t {
 		return std::hash<std::string>{}(txt);
 	}
 };

@@ -1,4 +1,7 @@
+#include <array>
 #include <format>
+#include <ranges>
+#include <algorithm>
 #include <unordered_map>
 
 #include "lox/scanner.hpp"
@@ -290,13 +293,13 @@ auto scanner::emplace_literal(literal lit, std::vector<literal> &out) -> uint16_
 }
 
 void scanner::make_error_unexpected_symbol(const uint32_t pos) const {
-	constexpr size_t msg_length{ sizeof("Unexpected symbol ' '") };
+	constexpr size_t message_len{ sizeof("Unexpected symbol ' '" ) };
 	constexpr size_t symbol_pos{ sizeof("Unexpected symbol '") - 1u };
 
-	std::array<char, msg_length> stack_string{ "Unexpected symbol ' '" };
+	std::array<char, message_len> stack_string{  "Unexpected symbol ' '" };
 	stack_string[symbol_pos] = m_script[pos];
 
-	const std::string_view message{ std::begin(stack_string), std::size(stack_string) - 1ull };
+	const std::string_view message{ std::data(stack_string), std::size(stack_string) - 1ull };
 	errout.report(message, error_record{
 		.code    = error_code::se_no_sources,
 		.line    = m_line,

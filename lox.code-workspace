@@ -32,7 +32,7 @@
 				"request": "launch",
 				"program": "${command:cmake.launchTargetPath}",
 				"cwd": "${workspaceFolder}/bin",
-				"args": [ "assets/test.lox" ],
+				"args": [ "assets/variables.lox" ],
 				"stopAtEntry": false
 			}
 		],

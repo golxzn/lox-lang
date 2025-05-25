@@ -23,49 +23,42 @@ auto evaluate(const std::string_view file_path, const std::string_view script) -
 
 	lox::scanner scanner{ script, errout };
 
-	std::printf("\n------------------------ SCANNING -----------------------\n\n");
+	// std::printf("\n------------------------ SCANNING -----------------------\n\n");
 	const auto ctx{ scanner.scan() };
 
-	std::printf("Scan Errors:\n");
-	errout.export_records([](std::string_view err) {
-		std::printf("%.*s\n", static_cast<int32_t>(std::size(err)), std::data(err));
-	});
-	errout.clear();
-
-	std::printf("\nLiterals:\n");
-	for (size_t i{}; i < std::size(ctx.literals); ++i) {
-		std::printf("%.3zu | ", i);
-		print_literal(ctx.literals[i]);
-		std::printf("\n");
+	if (!std::empty(errout)) {
+		std::printf("Scan Errors:\n");
+		errout.export_records([](std::string_view err) {
+			std::printf("%.*s\n", static_cast<int32_t>(std::size(err)), std::data(err));
+		});
+		errout.clear();
 	}
 
-	std::printf("\nTokens:\n");
+	// std::printf("\nLiterals:\n");
+	// for (size_t i{}; i < std::size(ctx.literals); ++i) {
+	// 	std::printf("%.3zu | ", i);
+	// 	print_literal(ctx.literals[i]);
+	// 	std::printf("\n");
+	// }
 
-	for (const auto &token : ctx.tokens) {
-		std::printf("at %.3u is %s", token.position, std::data(lox::token_name(token.type)));
-		if (lox::invalid_id != token.literal_id) {
-			print_literal(ctx.literals.at(token.literal_id));
-		}
-		std::printf("\n");
-	}
-
-
-	std::printf("\n------------------------ PARSING ------------------------\n\n");
+	// std::printf("\n------------------------ PARSING ------------------------\n\n");
 
 	lox::parser parser{ ctx, errout };
 	auto program{ parser.parse() };
 
-	std::printf("Parse Errors:\n");
-	errout.export_records([](std::string_view err) {
-		std::printf("%.*s\n", static_cast<int32_t>(std::size(err)), std::data(err));
-	});
-	errout.clear();
+	if (!std::empty(errout)) {
+		std::printf("Parse Errors:\n");
+		errout.export_records([](std::string_view err) {
+			std::printf("%.*s\n", static_cast<int32_t>(std::size(err)), std::data(err));
+		});
+		errout.clear();
+	}
 
-	std::printf("\n----------------------- EXECUTION -----------------------\n\n");
+	// std::printf("\n----------------------- EXECUTION -----------------------\n\n");
 
 	lox::execution::syntax_tree_interpreter interpreter{ ctx.lexemes, errout };
 
-	if (const auto status{ interpreter.run(program) }; status != lox::execution::status::ok) {
+	if (const auto status{ interpreter.run(program) }; status != lox::execution::status::ok || !std::empty(errout)) {
 		std::printf("Runtime Errors:\n");
 		errout.export_records([](std::string_view err) {
 			std::printf("%.*s\n", static_cast<int32_t>(std::size(err)), std::data(err));

@@ -1,42 +1,84 @@
 #include <format>
+#include <algorithm>
 #include <stdexcept>
 
 #include "lox/execution/environment.hpp"
 
 namespace lox::execution {
 
-auto environment::define_variable(lox::token tok, lox::literal value) -> bool {
-	return m_values.try_emplace(tok.lexeme_id, std::move(value)).second;
+void environment::push_scope() {
+	m_scopes.emplace_back(std::size(m_keys));
 }
 
-auto environment::define_constant(lox::token tok, lox::literal value) -> bool {
-	return m_constants.try_emplace(tok.lexeme_id, std::move(value)).second;
+void environment::pop_scope() {
+	const size_t rewind_point{ get_rewind_point() };
+	m_keys.resize(rewind_point);
+	m_values.resize(rewind_point);
+	if (!std::empty(m_scopes)) m_scopes.pop_back();
 }
 
-auto environment::contains(lox::token tok) const noexcept -> bool {
-	return m_constants.contains(tok.lexeme_id)
-		|| m_values.contains(tok.lexeme_id);
+
+auto environment::define_variable(lexeme_id id, lox::literal value) -> bool {
+	return push_value(id, std::move(value), mutability::variable);
 }
 
-auto environment::look_up(lox::token tok) const -> const lox::literal & {
-	if (const auto found{ m_constants.find(tok.lexeme_id) }; found != std::end(m_constants)) {
-		return found->second;
+auto environment::define_constant(lexeme_id id, lox::literal value) -> bool {
+	return push_value(id, std::move(value), mutability::constant);
+}
+
+auto environment::contains(lexeme_id id, search_range::globally_type) const noexcept -> bool {
+	const auto end{ std::rend(m_keys) };
+	return std::find(std::rbegin(m_keys), end, id) != end;
+}
+
+auto environment::contains(lexeme_id id, search_range::current_scope_type) const noexcept -> bool {
+	const auto end{ std::next(std::rbegin(m_keys),
+		static_cast<std::ptrdiff_t>(std::size(m_keys) - get_rewind_point())
+	) };
+
+	return std::find(std::rbegin(m_keys), end, id) != end;
+}
+
+auto environment::look_up(lexeme_id id) const -> const lox::literal & {
+	if (const auto index{ index_of(id) }; index >= 0ll) {
+		return m_values[index].value;
 	}
-	if (const auto found{ m_values.find(tok.lexeme_id) }; found != std::end(m_values)) {
-		return found->second;
-	}
 
-	/// @todo It's essential to provide WHICH FUCKING VARIABLE is undefined. The NAME, Carl
 	throw std::out_of_range{ R"(Undefined variable or constant)" };
 }
 
-auto environment::assign(lox::token tok, lox::literal value) noexcept -> bool {
-	if (auto found{ m_values.find(tok.lexeme_id) }; found != std::end(m_values)) {
-		found->second = std::move(value);
-		return true;
+auto environment::assign(lexeme_id id, lox::literal value) noexcept -> assignment_status {
+	const auto index{ index_of(id) };
+	if (index < 0ll) {
+		return assignment_status::not_found;
 	}
 
-	return false;
+	if (auto &container{ m_values[index] }; container.type == mutability::variable) {
+		container.value = std::move(value);
+		return assignment_status::ok;
+	}
+
+	return assignment_status::constant;
+}
+
+auto environment::index_of(lexeme_id id) const noexcept -> int64_t {
+	int64_t index{ static_cast<int64_t>(std::size(m_keys) - 1ull) };
+	for (; index >= 0ll && id != m_keys[index]; --index) { }
+	return index;
+}
+
+auto environment::push_value(lexeme_id id, lox::literal value, mutability type) -> bool {
+	if (contains(id)) {
+		return false;
+	}
+
+	m_keys.emplace_back(id);
+	m_values.emplace_back(std::move(value), type);
+	return true;
+}
+
+auto environment::get_rewind_point() const noexcept -> size_t {
+	return std::empty(m_scopes) ? 0ull : m_scopes.back();
 }
 
 } // namespace lox::execution

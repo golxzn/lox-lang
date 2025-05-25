@@ -19,8 +19,8 @@ auto literal::type() const noexcept -> literal_type {
 auto to_number_literal(const std::string_view str_value) -> literal {
 	if (std::empty(str_value)) return literal{ 0 };
 
-	const auto b{ std::begin(str_value) };
-	const auto e{ std::end(str_value) };
+	const auto b{ std::data(str_value) };
+	const auto e{ std::next(std::data(str_value), std::size(str_value)) };
 
 	if (int64_t val{}; fast_float::from_chars(b, e, val).ec == std::errc{}) {
 		return literal{ val };
@@ -55,8 +55,8 @@ auto to_literal(const std::string_view str_value) -> literal {
 		default: break;
 	}
 
-	const auto b{ std::begin(str_value) };
-	const auto e{ std::end(str_value) };
+	const auto b{ std::data(str_value) };
+	const auto e{ std::next(std::data(str_value), std::size(str_value)) };
 
 	if (double val{}; fast_float::from_chars(b, e, val).ec == std::errc{}) {
 		return literal{ val };

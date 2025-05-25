@@ -2,22 +2,26 @@ import os
 from io import TextIOWrapper
 from argparse import ArgumentParser, Namespace
 
+EXPRESSION_CLASS: str = 'expression'
 EXPRESSIONS: dict[str, str] = {
-	'unary'     : 'token op, std::unique_ptr<expression> expr',
-	'assignment': 'token name, std::unique_ptr<expression> value',
-	'binary'    : 'token op, std::unique_ptr<expression> left, std::unique_ptr<expression> right',
-	'grouping'  : 'std::unique_ptr<expression> expr',
+	'unary'     : f'token op, std::unique_ptr<{EXPRESSION_CLASS}> expr',
+	'assignment': f'token name, std::unique_ptr<{EXPRESSION_CLASS}> value',
+	'binary'    : f'token op, std::unique_ptr<{EXPRESSION_CLASS}> left, std::unique_ptr<{EXPRESSION_CLASS}> right',
+	'grouping'  : f'std::unique_ptr<{EXPRESSION_CLASS}> expr',
 	'literal'   : 'lox::literal value',
 	'identifier': 'token name'
 }
+EXPRESSIONS_INCLUDES: list[str] = [ '<memory>' ]
 
+STATEMENT_CLASS: str = 'statement'
 STATEMENTS: dict[str, str] = {
-	'expression'     : 'std::unique_ptr<lox::expression> expr',
-	'variable'       : 'token identifier, std::unique_ptr<lox::expression> initializer',
-	'constant'       : 'token identifier, std::unique_ptr<lox::expression> initializer',
-	'LOX_DEBUG!print': 'std::unique_ptr<lox::expression> expr'
+	'scope'          : f'std::vector<std::unique_ptr<{STATEMENT_CLASS}>> statements',
+	'expression'     : f'std::unique_ptr<lox::{EXPRESSION_CLASS}> expr',
+	'variable'       : f'token identifier, std::unique_ptr<lox::{EXPRESSION_CLASS}> initializer',
+	'constant'       : f'token identifier, std::unique_ptr<lox::{EXPRESSION_CLASS}> initializer',
+	'LOX_DEBUG!print': f'std::unique_ptr<lox::{EXPRESSION_CLASS}> expr'
 }
-
+STATEMENT_INCLUDES: list[str] = [ '<vector>' ]
 
 INCLUDE_DIR: str = 'include/lox/gen/'
 SOURCES_DIR: str = 'sources/lox/gen/'
@@ -152,7 +156,7 @@ def define_ast(out_dir: str, includes: list[str], base_class: str, classes: dict
 		header.write(DISCLAIMER)
 		header.write(HEADER_BEGIN)
 		for include in includes:
-			header.write(f'\n#include "{include}"')
+			header.write(f'\n#include {include}')
 
 		header.write(OPEN_NAMESPACE)
 		generate_base_class(header, base_class, classes)
@@ -175,15 +179,15 @@ def define_ast(out_dir: str, includes: list[str], base_class: str, classes: dict
 
 		source.write(CLOSE_NAMESPACE)
 
-	return include_path
+	return f'"{include_path}"'
 
 def main(args: Namespace) -> int:
 	output_path: str = args.output.replace('\\', '/')
 	os.makedirs(os.path.join(output_path, INCLUDE_DIR), exist_ok=True)
 	os.makedirs(os.path.join(output_path, SOURCES_DIR), exist_ok=True)
 
-	include: str = define_ast(output_path, [], 'expression', EXPRESSIONS)
-	define_ast(output_path, [include], 'statement', STATEMENTS)
+	include: str = define_ast(output_path, EXPRESSIONS_INCLUDES, EXPRESSION_CLASS, EXPRESSIONS)
+	define_ast(output_path, STATEMENT_INCLUDES + [include], STATEMENT_CLASS, STATEMENTS)
 
 	return 0
 

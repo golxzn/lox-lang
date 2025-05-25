@@ -29,6 +29,7 @@ private:
 	auto constant_declaration() -> std::unique_ptr<statement>;
 
 	auto stmt() -> std::unique_ptr<statement>;
+	auto scope_stmt() -> std::unique_ptr<statement>;
 
 	template<std::derived_from<statement> Type>
 	auto make_stmt(auto content_gen) -> std::unique_ptr<statement> {

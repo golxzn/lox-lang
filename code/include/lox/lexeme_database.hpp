@@ -5,6 +5,7 @@
 #include <vector>
 #include <cstdint>
 #include <string_view>
+#include <unordered_map>
 
 #include "lox/types.hpp"
 #include "lox/export.hpp"
@@ -27,7 +28,7 @@ public:
 private:
 	std::vector<char> m_buffer{};
 	std::vector<section> m_sections{ section{ 0u, 0u } };
-	std::map<hash_type, lexeme_id> m_lookup_table{};
+	std::unordered_map<hash_type, lexeme_id> m_lookup_table{};
 
 	auto find(hash_type hash) const noexcept -> lexeme_id;
 };

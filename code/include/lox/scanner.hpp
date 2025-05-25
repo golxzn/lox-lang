@@ -2,8 +2,8 @@
 
 #include <vector>
 #include <string>
+#include <optional>
 #include <string_view>
-#include <tl/expected.hpp>
 
 #include "lox/context.hpp"
 #include "lox/error_handler.hpp"

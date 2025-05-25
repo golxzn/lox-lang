@@ -161,12 +161,12 @@ void syntax_tree_interpreter::execute(statement &stmt) {
 
 void syntax_tree_interpreter::accept(const expression::unary &unary) {
 	if (!unary.expr) {
-		error(error_code::ee_missing_expression, "");
+		error(error_code::ee_missing_expression, "", unary.op);
 	}
 
 	auto value{ evaluate(*unary.expr) };
 	if (!is_suitable_for(unary.op.type, value.type())) {
-		throw error_no_suitable(unary.op.type, value);
+		throw error_no_suitable(unary.op, value);
 	}
 
 	switch (unary.op.type) {
@@ -184,32 +184,42 @@ void syntax_tree_interpreter::accept(const expression::unary &unary) {
 }
 
 void syntax_tree_interpreter::accept(const expression::assignment &assign) {
-	if (m_env.contains(assign.name) && m_env.assign(assign.name, evaluate(*assign.value))) {
-		return;
-	}
+	switch (m_env.assign(assign.name.lexeme_id, evaluate(*assign.value))) {
+		using enum environment::assignment_status;
 
-	error(error_code::ee_undefined_identifier, std::format(
-		R"(Undefined variable "{}")", lexemes.get().get(assign.name.lexeme_id)
-	));
+		case not_found:
+			error(error_code::ee_undefined_identifier, std::format(
+				R"(Undefined variable "{}")", lexemes.get().get(assign.name.lexeme_id)
+			), assign.name);
+			break;
+
+		case constant:
+			error(error_code::ee_constant_assignment, std::format(
+				R"(Attempt to assign "{}" constant)", lexemes.get().get(assign.name.lexeme_id)
+			), assign.name);
+			break;
+
+		default: break;
+	}
 }
 
 void syntax_tree_interpreter::accept(const expression::binary &expr) {
 	if (!expr.left || !expr.right) {
-		error(error_code::ee_missing_expression, "");
+		error(error_code::ee_missing_expression, "", expr.op);
 	}
 
 	auto lhv{ evaluate(*expr.left) };
 	auto rhv{ evaluate(*expr.right) };
 	if (!is_suitable_for(expr.op.type, lhv.type(), rhv.type())) {
-		throw error_no_suitable(expr.op.type, lhv, rhv);
+		throw error_no_suitable(expr.op, lhv, rhv);
 	}
 
 	auto assign_output{ [&out{ m_output }] (auto value) {
 		out = std::move(value);
 		return evaluation_result{};
 	} };
-	auto throw_error{ [this] (const auto &msg) {
-		throw error(error_code::ee_runtime_error, msg);
+	auto throw_error{ [this, &op{ expr.op }] (const auto &msg) {
+		throw error(error_code::ee_runtime_error, msg, op);
 	} };
 
 	[op{ expr.op.type }, &lhv, &rhv] {
@@ -253,19 +263,23 @@ void syntax_tree_interpreter::accept(const expression::literal &value) {
 }
 
 void syntax_tree_interpreter::accept(const expression::identifier &id) {
-	if (m_env.contains(id.name)) {
-		m_output = m_env.look_up(id.name);
+	if (m_env.contains(id.name.lexeme_id, execution::search_range::globally)) {
+		m_output = m_env.look_up(id.name.lexeme_id);
 		return;
 	}
 
 	error(error_code::ee_undefined_identifier, std::format(
 		R"(Undefined identifier "{}")", lexemes.get().get(id.name.lexeme_id)
-	));
+	), id.name);
 }
 
 #pragma endregion expression::visitor_interface methods
 
 #pragma region statement::visitor_interface methods
+
+void syntax_tree_interpreter::accept(const statement::scope &scope) {
+	execute_block(scope.statements);
+}
 
 void syntax_tree_interpreter::accept(const statement::expression &expr) {
 	if (expr.expr) {
@@ -276,29 +290,29 @@ void syntax_tree_interpreter::accept(const statement::expression &expr) {
 }
 
 void syntax_tree_interpreter::accept(const statement::variable &var) {
-	if (m_env.contains(var.identifier)) {
+	if (m_env.contains(var.identifier.lexeme_id)) {
 		error(error_code::ee_identifier_already_exists, std::format(
 			R"(Variable "{}" is already defined)", lexemes.get().get(var.identifier.lexeme_id)
-		));
+		), var.identifier);
 	}
-	std::ignore = m_env.define_variable(var.identifier,
+	std::ignore = m_env.define_variable(var.identifier.lexeme_id,
 		var.initializer ? evaluate(*var.initializer) : null_literal
 	);
 }
 
 void syntax_tree_interpreter::accept(const statement::constant &con) {
-	if (m_env.contains(con.identifier)) {
+	if (m_env.contains(con.identifier.lexeme_id)) {
 		error(error_code::ee_identifier_already_exists, std::format(
 			R"(Constant "{}" is already defined)", lexemes.get().get(con.identifier.lexeme_id)
-		));
+		), con.identifier);
 	}
 	if (!con.initializer) {
 		error(error_code::ee_missing_expression, std::format(
 			R"(Constant "{}" wasn't initialized)", lexemes.get().get(con.identifier.lexeme_id)
-		));
+		), con.identifier);
 	}
 
-	std::ignore = m_env.define_constant(con.identifier, evaluate(*con.initializer));
+	std::ignore = m_env.define_constant(con.identifier.lexeme_id, evaluate(*con.initializer));
 }
 
 
@@ -318,19 +332,38 @@ void syntax_tree_interpreter::accept(const statement::print &print) {
 
 #pragma endregion statement::visitor_interface methods
 
+void syntax_tree_interpreter::execute_block(const std::vector<std::unique_ptr<statement>> &statements) {
+	m_env.push_scope();
+	try {
+		for (const auto &statement : statements) {
+			if (statement) execute(*statement);
+		}
+	} catch (...) {}
+	m_env.pop_scope();
+}
 
-auto syntax_tree_interpreter::error_no_suitable(token_type op, const literal &value) const -> execution_error {
+auto syntax_tree_interpreter::error_no_suitable(const token &op, const literal &value) const -> execution_error {
 	return error(error_code::ee_literal_not_suitable_for_operation,
 		std::format("Value '{}' is not suitable for '{}' ('{}') unary operation",
-			to_string(value), token_string(op), token_name(op)
-		)
+			to_string(value), token_string(op.type), token_name(op.type)
+		), op
 	);
 }
 
-auto syntax_tree_interpreter::error_no_suitable(token_type op, const literal &lhv, const literal &rhv) const -> execution_error {
+auto syntax_tree_interpreter::error_no_suitable(const token &op, const literal &lhv, const literal &rhv) const -> execution_error {
 	return error(error_code::ee_literal_not_suitable_for_operation,
-		make_no_operator_error(op, lhv, rhv)
+		make_no_operator_error(op.type, lhv, rhv), op
 	);
+}
+
+auto syntax_tree_interpreter::error(error_code err_no, std::string_view msg, const token &tok) const -> execution_error {
+	errout.get().report(msg, error_record{
+		.code = err_no,
+		.line = tok.line,
+		.from = tok.position,
+		.to   = static_cast<uint32_t>(std::size(token_string(tok.type)))
+	});
+	return execution_error{ std::data(msg) };
 }
 
 auto syntax_tree_interpreter::error(error_code err_no, std::string_view msg) const -> execution_error {

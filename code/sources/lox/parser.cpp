@@ -43,10 +43,12 @@ auto parser::variable_declaration() -> std::unique_ptr<statement> {
 	std::unique_ptr<expression> expr_{};
 	if (match<token_type::left_brace>()) {
 		const auto &init_start{ peek() };
-		expr_ = expr();
-		consume(token_type::right_brace, "Missed '}' brace during variable initialization",
-			init_start, error_code::pe_broken_symmetry
-		);
+		if (!match<token_type::right_brace>()) {
+			expr_ = expr();
+			consume(token_type::right_brace, "Missed '}' brace during variable initialization",
+				init_start, error_code::pe_broken_symmetry
+			);
+		}
 	}
 
 	match<token_type::semicolon>(); // Skip it if presented. No one cares
@@ -65,10 +67,17 @@ auto parser::constant_declaration() -> std::unique_ptr<statement> {
 	std::unique_ptr<expression> expr_{};
 	if (!match<token_type::right_brace>()) {
 		const auto &init_start{ peek() };
-		expr_ = expr();
-		consume(token_type::right_brace, "Missed '}' brace during variable initialization",
-			init_start, error_code::pe_broken_symmetry
-		);
+		if (!match<token_type::right_brace>()) {
+			expr_ = expr();
+			consume(token_type::right_brace, "Missed '}' brace during variable initialization",
+				init_start, error_code::pe_broken_symmetry
+			);
+		} else {
+			// INITIALIZE USING TYPE!
+			make_error("Missed initialization value for constant!",
+				error_code::pe_missing_const_initialization, init_start
+			);
+		}
 	} else {
 		expr_ = std::make_unique<expression::literal>(null_literal);
 	}
@@ -84,8 +93,22 @@ auto parser::stmt() -> std::unique_ptr<statement> {
 		return make_stmt<statement::print>(&parser::expr);
 	}
 #endif // defined(LOX_DEBUG)
+	if (match<token_type::left_brace>()) {
+		return scope_stmt();
+	}
 
 	return make_stmt<statement::expression>(&parser::expr);
+}
+
+auto parser::scope_stmt() -> std::unique_ptr<statement> {
+	std::vector<std::unique_ptr<statement>> statements{};
+	while (!check(token_type::right_brace)) {
+		statements.emplace_back(declaration());
+	}
+	consume(token_type::right_brace, "Expected '}' after block", peek(),
+		error_code::pe_broken_symmetry
+	);
+	return std::make_unique<statement::scope>(std::move(statements));
 }
 
 auto parser::expr() -> std::unique_ptr<expression> {

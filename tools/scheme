@@ -1,0 +1,37 @@
+program       -> declaration* EOF;
+
+declaration   -> variable_decl
+               | constant_decl
+               | statement;
+
+variable_decl -> "var" IDENTIFIER (":" TYPE)* "{" expression "}" ";"
+              -> "var" IDENTIFIER ":" TYPE "{" expression* "}" ";";
+
+constant_decl -> "const" IDENTIFIER (":" TYPE)* "{" expression "}" ";"
+              -> "const" IDENTIFIER ":" TYPE "{" expression* "}" ";";
+
+statement     -> print_stmt // DEBUG BUILD ONLY
+               | scope_stmt
+               | expression;
+
+print_stmt    -> "print" expression ";":
+scope_stmt    -> "{" declaration* "}":
+
+expression    -> equality;
+
+equality      -> comparison ( ( "!=" | "==" ) comparison )*;
+comparison    -> term ( ( "<=" | ">=" | "<" | ">" ) term )*;
+term          -> factor ( ( "+" | "-" ) factor )*;
+factor        -> unary ( ( "*" | "/" ) unary )*;
+
+unary         -> ( "!" | "-" | "+" ) unary | primary;
+primary       -> "true" | "false" | "null"
+               | NUMBER | STRING | IDENTIFIER
+               | "(" expression ")";
+
+
+NUMBER        -> DIGIT+ ( "." DIGIT+ )? ;
+STRING        -> "\"" <any char except "\"">* "\"" ;
+IDENTIFIER    -> ALPHA ( ALPHA | DIGIT )* ;
+ALPHA         -> "a" ... "z" | "A" ... "Z" | "_" ;
+DIGIT         -> "0" ... "9" ;

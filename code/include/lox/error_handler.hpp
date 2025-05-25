@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <variant>
 #include <unordered_map>
 #include <memory_resource>
 
@@ -33,6 +34,7 @@ enum class error_code : uint32_t {
 	ee_missing_expression,
 	ee_undefined_identifier,
 	ee_identifier_already_exists,
+	ee_constant_assignment,
 	evaluation_error_end = 299,
 };
 
@@ -69,6 +71,7 @@ public:
 
 	explicit error_handler(std::string path, std::string_view source_code = {}) noexcept;
 
+	[[nodiscard]] auto empty() const noexcept -> bool { return std::empty(m_errors); }
 	void report(std::string_view message, error_record record) noexcept;
 	void clear();
 

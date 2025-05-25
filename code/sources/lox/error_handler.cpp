@@ -11,6 +11,10 @@ void error_handler::report(
 	std::string_view message,
 	error_record record
 ) noexcept {
+	if (record.to < record.from) {
+		record.to = record.from + 1u;
+	}
+
 	if (!(std::empty(m_file.source_code) || m_lines.contains(record.line))) {
 		m_lines.try_emplace(record.line, take_line(m_file.source_code, record));
 	}

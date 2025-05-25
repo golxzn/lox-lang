@@ -47,6 +47,7 @@ public:
 
 #pragma region statement::visitor_interface methods
 
+	void accept(const statement::scope &scope) override;
 	void accept(const statement::expression &expr) override;
 	void accept(const statement::variable &var) override;
 	void accept(const statement::constant &con) override;
@@ -65,8 +66,11 @@ private:
 	std::reference_wrapper<error_handler> errout;
 	bool got_runtime_error{ false };
 
-	auto error_no_suitable(token_type op, const literal &value) const -> execution_error;
-	auto error_no_suitable(token_type op, const literal &lhv, const literal &rhv) const -> execution_error;
+	void execute_block(const std::vector<std::unique_ptr<statement>> &statements);
+
+	auto error_no_suitable(const token &op, const literal &value) const -> execution_error;
+	auto error_no_suitable(const token &op, const literal &lhv, const literal &rhv) const -> execution_error;
+	auto error(error_code err_no, std::string_view msg, const token &tok) const -> execution_error;
 	auto error(error_code err_no, std::string_view msg) const -> execution_error;
 
 	static auto is_suitable_for(token_type op, literal_type type) -> bool;

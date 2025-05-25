@@ -1,6 +1,28 @@
 var lhv{ "hello" };
 const rhv{ " world" };
 
+{ // all cover test
+	const lhv{ "Test" };
+	var rhv{};
+	rhv = " scope";
+	print lhv + rhv;
+}
+
+{ // local & global test
+	const lhv{ "Inner" };
+	print lhv + rhv; // Expecting "Inner world"
+}
+
+{ // arithmetics
+	print 100 * 12 + 4 > 5;
+}
+
+var same{ 1 };
+{
+	var same{ same + 1 };
+	print same;
+}
+
 print lhv + rhv;
 
 lhv = "destroy";
