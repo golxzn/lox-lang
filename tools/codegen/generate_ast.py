@@ -23,6 +23,7 @@ STATEMENTS: dict[str, str] = {
 	'branch'         : f'{EXPRESSION_PTR} condition, {STATEMENT_PTR} then_branch, {STATEMENT_PTR} else_branch',
 	'variable'       : f'token identifier, {EXPRESSION_PTR} initializer',
 	'constant'       : f'token identifier, {EXPRESSION_PTR} initializer',
+	'loop'           : f'{EXPRESSION_PTR} condition, {STATEMENT_PTR} body',
 	'LOX_DEBUG!print': f'{EXPRESSION_PTR} expr'
 }
 STATEMENT_INCLUDES: list[str] = [ '<vector>' ]

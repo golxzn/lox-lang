@@ -104,6 +104,9 @@ auto parser::stmt() -> std::unique_ptr<statement> {
 		return make_stmt<statement::print>(&parser::expr);
 	}
 #endif // defined(LOX_DEBUG)
+	if (match<token_type::kw_while>()) {
+		return loop_stmt();
+	}
 	if (match<token_type::left_brace>()) {
 		return scope_stmt();
 	}
@@ -122,7 +125,7 @@ auto parser::branch_stmt() -> std::unique_ptr<statement> {
 	consume(right_paren, "Expected ')' after 'if' condition", peek());
 
 	const auto get_block{ [this] {
-		consume(left_brace, "Branch block '{' is required", peek());
+		consume(left_brace, "Branch requires '{' block", peek());
 		return scope_stmt();
 	} };
 
@@ -142,6 +145,32 @@ auto parser::branch_stmt() -> std::unique_ptr<statement> {
 	}
 
 	return std::move(branch);
+}
+
+auto parser::loop_stmt() -> std::unique_ptr<statement> {
+	using enum token_type;
+
+	consume(left_paren, "Expected '(' after 'while' statement", peek());
+
+	auto declaration{ storage_declaration() };
+	auto condition{ expr() };
+
+	consume(right_paren, "Expected ')' after 'while' condition", peek());
+
+	const auto get_block{ [this] {
+		consume(left_brace, "'while' requires '{' block", peek());
+		return scope_stmt();
+	} };
+
+	auto loop{ std::make_unique<statement::loop>(std::move(condition), get_block()) };
+	if (declaration) {
+		return std::make_unique<statement::scope>(utils::make_pointers_vector<statement>(
+			std::move(declaration),
+			std::move(loop)
+		));
+	}
+
+	return std::move(loop);
 }
 
 auto parser::scope_stmt() -> std::unique_ptr<statement> {

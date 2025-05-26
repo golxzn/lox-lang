@@ -324,7 +324,9 @@ void syntax_tree_interpreter::accept(const statement::branch &branch) {
 			if (branch.else_branch) execute(*branch.else_branch);
 		}
 	} else {
-		/// @todo LOG ERROR NON LOGICAL CONDITION
+		error(lox::error_code::ee_condition_is_not_logical,
+			"The condition of branch couldn't be converted to boolean type!"
+		);
 	}
 }
 
@@ -354,6 +356,27 @@ void syntax_tree_interpreter::accept(const statement::constant &con) {
 	std::ignore = m_env.define_constant(con.identifier.lexeme_id, evaluate(*con.initializer));
 }
 
+void syntax_tree_interpreter::accept(const statement::loop &loop) {
+	const auto make_condition{ [this, &loop] { return is_truth(evaluate(*loop.condition)); }};
+
+	auto cond{ make_condition() };
+	if (loop.body) {
+		for (; cond.value_or(false); cond = make_condition()) {
+			execute(*loop.body);
+		}
+	} else {
+		while (cond.value_or(false)) {
+			cond = make_condition();
+		}
+	}
+
+	if (!cond.has_value()) {
+		error(lox::error_code::ee_condition_is_not_logical,
+			"The condition of 'while' loop couldn't be converted to boolean type!"
+		);
+		return;
+	}
+}
 
 #if defined(LOX_DEBUG)
 

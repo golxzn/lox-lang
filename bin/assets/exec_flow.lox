@@ -22,3 +22,16 @@ if (false and true) { } else {
 	print "OMG!";
 }
 
+
+while (var counter{ 5 }; counter != 0) {
+	counter = counter - 1;
+	print counter;
+}
+
+print "";
+
+var counter{ 5 };
+while (counter != 0) {
+	print 5 - counter;
+	counter = counter - 1;
+}

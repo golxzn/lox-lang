@@ -35,6 +35,7 @@ enum class error_code : uint32_t {
 	ee_undefined_identifier,
 	ee_identifier_already_exists,
 	ee_constant_assignment,
+	ee_condition_is_not_logical,
 	evaluation_error_end = 299,
 };
 

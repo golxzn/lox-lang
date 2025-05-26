@@ -31,6 +31,8 @@ private:
 
 	auto stmt() -> std::unique_ptr<statement>;
 	auto branch_stmt() -> std::unique_ptr<statement>;
+	// auto for_loop_stmt() -> std::unique_ptr<statement>;
+	auto loop_stmt() -> std::unique_ptr<statement>;
 	auto scope_stmt() -> std::unique_ptr<statement>;
 
 	template<std::derived_from<statement> Type>

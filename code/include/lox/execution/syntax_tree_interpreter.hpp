@@ -53,6 +53,7 @@ public:
 	void accept(const statement::branch &branch) override;
 	void accept(const statement::variable &var) override;
 	void accept(const statement::constant &con) override;
+	void accept(const statement::loop &loop) override;
 
 #if defined(LOX_DEBUG)
 	void accept(const statement::print &print) override;
