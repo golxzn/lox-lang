@@ -12,7 +12,7 @@
 				"program": "${command:cmake.launchTargetPath}",
 				"cwd": "${workspaceFolder}/bin",
 				"stopAtEntry": false,
-				"args": [ "assets/variables.lox" ],
+				"args": [ "assets/exec_flow.lox" ],
 				"linux": {
 					"MIMode": "gdb",
 					"miDebuggerPath": "gdb"
@@ -32,7 +32,7 @@
 				"request": "launch",
 				"program": "${command:cmake.launchTargetPath}",
 				"cwd": "${workspaceFolder}/bin",
-				"args": [ "assets/variables.lox" ],
+				"args": [ "assets/exec_flow.lox" ],
 				"stopAtEntry": false
 			}
 		],

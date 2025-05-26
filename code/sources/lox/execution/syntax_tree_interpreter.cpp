@@ -262,6 +262,33 @@ void syntax_tree_interpreter::accept(const expression::literal &value) {
 	m_output = value.value;
 }
 
+void syntax_tree_interpreter::accept(const expression::logical &logic) {
+	m_output = evaluate(*logic.left);
+
+	const auto truth{ is_truth(m_output) };
+	if (!truth.has_value()) {
+		/// @todo log error
+		m_output = null_literal;
+		return;
+	}
+
+	switch (logic.op.type) {
+		case token_type::kw_or:
+			if (truth.value()) return;
+			break;
+
+		case token_type::kw_and:
+			if (!truth.value()) return;
+			break;
+
+		default:
+			// error(lox::error_code::ee_)
+			return;
+	}
+
+	m_output = evaluate(*logic.right);
+}
+
 void syntax_tree_interpreter::accept(const expression::identifier &id) {
 	if (m_env.contains(id.name.lexeme_id, execution::search_range::globally)) {
 		m_output = m_env.look_up(id.name.lexeme_id);
@@ -286,6 +313,27 @@ void syntax_tree_interpreter::accept(const statement::expression &expr) {
 		m_output = evaluate(*expr.expr);
 	} else {
 		error(error_code::ee_missing_expression, "");
+	}
+}
+
+void syntax_tree_interpreter::accept(const statement::branch &branch) {
+	if (branch.decl) {
+		m_env.push_scope();
+		execute(*branch.decl);
+	}
+
+	if (auto truth{ is_truth(evaluate(*branch.condition)) }; truth.has_value()) {
+		if (truth.value()) {
+			if (branch.then_branch) execute(*branch.then_branch);
+		} else {
+			if (branch.else_branch) execute(*branch.else_branch);
+		}
+	} else {
+		/// @todo LOG ERROR NON LOGICAL CONDITION
+	}
+
+	if (branch.decl) {
+		m_env.pop_scope();
 	}
 }
 

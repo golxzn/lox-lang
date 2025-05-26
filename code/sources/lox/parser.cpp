@@ -21,16 +21,23 @@ auto parser::parse() -> program {
 
 auto parser::declaration() -> std::unique_ptr<statement> {
 	try {
-		if (match<token_type::kw_var>()) {
-			return variable_declaration();
-		}
-		if (match<token_type::kw_const>()) {
-			return constant_declaration();
+		if (auto storage{ storage_declaration() }; storage) {
+			return std::move(storage);
 		}
 
 		return stmt();
 	} catch (const error &e) {
 		synchronize();
+	}
+	return nullptr;
+}
+
+auto parser::storage_declaration() -> std::unique_ptr<statement> {
+	if (match<token_type::kw_const>()) {
+		return constant_declaration();
+	}
+	if (match<token_type::kw_var>()) {
+		return variable_declaration();
 	}
 	return nullptr;
 }
@@ -88,6 +95,9 @@ auto parser::constant_declaration() -> std::unique_ptr<statement> {
 }
 
 auto parser::stmt() -> std::unique_ptr<statement> {
+	if (match<token_type::kw_if>()) {
+		return branch_stmt();
+	}
 #if defined(LOX_DEBUG)
 	if (match<token_type::kw_print>()) {
 		return make_stmt<statement::print>(&parser::expr);
@@ -98,6 +108,34 @@ auto parser::stmt() -> std::unique_ptr<statement> {
 	}
 
 	return make_stmt<statement::expression>(&parser::expr);
+}
+
+auto parser::branch_stmt() -> std::unique_ptr<statement> {
+	using enum token_type;
+
+	consume(left_paren, "Expected '(' after 'if' statement", peek());
+
+	std::unique_ptr<statement> declaration{ storage_declaration() };
+
+	auto condition{ expr() };
+
+	consume(right_paren, "Expected ')' after 'if' condition", peek());
+
+	const auto get_block{ [this] {
+		consume(left_brace, "Branch block '{' is required", peek());
+		auto block{ scope_stmt() };
+		// consume(right_brace, "Expected '}' after branch block", peek());
+		return block;
+	} };
+
+	auto then_block{ get_block() };
+
+	return std::make_unique<statement::branch>(
+		std::move(declaration),
+		std::move(condition),
+		std::move(then_block),
+		match<kw_else>() ? get_block() : nullptr
+	);
 }
 
 auto parser::scope_stmt() -> std::unique_ptr<statement> {
@@ -116,7 +154,7 @@ auto parser::expr() -> std::unique_ptr<expression> {
 }
 
 auto parser::assignment() -> std::unique_ptr<expression> {
-	auto expr_{ equality() };
+	auto expr_{ logical_or() };
 
 	if (match<token_type::equal>()) {
 		const auto &equals_token{ previous() };
@@ -131,6 +169,14 @@ auto parser::assignment() -> std::unique_ptr<expression> {
 	}
 
 	return expr_;
+}
+
+auto parser::logical_or() -> std::unique_ptr<expression> {
+	return iterate_if<expression::logical, token_type::kw_or>(&parser::logical_and);
+}
+
+auto parser::logical_and() -> std::unique_ptr<expression> {
+	return iterate_if<expression::logical, token_type::kw_and>(&parser::equality);
 }
 
 auto parser::equality() -> std::unique_ptr<expression> {

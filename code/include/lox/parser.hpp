@@ -25,10 +25,12 @@ private:
 	size_t m_current{};
 
 	auto declaration() -> std::unique_ptr<statement>;
+	auto storage_declaration() -> std::unique_ptr<statement>;
 	auto variable_declaration() -> std::unique_ptr<statement>;
 	auto constant_declaration() -> std::unique_ptr<statement>;
 
 	auto stmt() -> std::unique_ptr<statement>;
+	auto branch_stmt() -> std::unique_ptr<statement>;
 	auto scope_stmt() -> std::unique_ptr<statement>;
 
 	template<std::derived_from<statement> Type>
@@ -52,6 +54,20 @@ private:
 		return std::move(expr_);
 	}
 
+	template<std::derived_from<expression> Expr, token_type ...Types>
+	auto iterate_if(auto next) -> std::unique_ptr<expression> {
+		auto expr_{ std::invoke(next, this) };
+
+		if (match<Types...>()) {
+			const auto &op{ previous() };
+			expr_ = std::make_unique<Expr>(
+				op, std::move(expr_), std::invoke(next, this)
+			);
+		}
+
+		return std::move(expr_);
+	}
+
 	template<token_type ...Types>
 	auto match() -> bool {
 		if (at_end()) return false;
@@ -65,6 +81,8 @@ private:
 
 	auto expr() -> std::unique_ptr<expression>;
 	auto assignment() -> std::unique_ptr<expression>;
+	auto logical_or() -> std::unique_ptr<expression>;
+	auto logical_and() -> std::unique_ptr<expression>;
 	auto equality() -> std::unique_ptr<expression>;
 	auto comparison() -> std::unique_ptr<expression>;
 	auto term() -> std::unique_ptr<expression>;

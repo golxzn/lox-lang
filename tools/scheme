@@ -1,24 +1,33 @@
 program       -> declaration* EOF;
 
-declaration   -> variable_decl
-               | constant_decl
+declaration   -> storage_decl
                | statement;
 
-variable_decl -> "var" IDENTIFIER (":" TYPE)* "{" expression "}" ";"
-              -> "var" IDENTIFIER ":" TYPE "{" expression* "}" ";";
+storage_decl  -> constant_decl
+               | variable_decl
 
 constant_decl -> "const" IDENTIFIER (":" TYPE)* "{" expression "}" ";"
               -> "const" IDENTIFIER ":" TYPE "{" expression* "}" ";";
 
-statement     -> print_stmt // DEBUG BUILD ONLY
+variable_decl -> "var" IDENTIFIER (":" TYPE)* "{" expression "}" ";"
+              -> "var" IDENTIFIER ":" TYPE "{" expression* "}" ";";
+
+statement     -> branch_stmt
+               | print_stmt // DEBUG BUILD ONLY
                | scope_stmt
                | expression;
 
+branch_stmt   -> "if" "(" ( declaration ";" )* expression ")" "{" statement "}"
+                ( "else" "{" statement "}" )
 print_stmt    -> "print" expression ";":
 scope_stmt    -> "{" declaration* "}":
 
-expression    -> equality;
+expression    -> assignment;
 
+assignment    -> IDENTIFIER "=" assignment
+               | logical_or;
+logical_or    -> logical_and ( "or" logical_and )*;
+logical_and   -> equality ( "and" equality )*;
 equality      -> comparison ( ( "!=" | "==" ) comparison )*;
 comparison    -> term ( ( "<=" | ">=" | "<" | ">" ) term )*;
 term          -> factor ( ( "+" | "-" ) factor )*;

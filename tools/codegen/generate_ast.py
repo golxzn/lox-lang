@@ -3,23 +3,27 @@ from io import TextIOWrapper
 from argparse import ArgumentParser, Namespace
 
 EXPRESSION_CLASS: str = 'expression'
+EXPRESSION_PTR: str = f'std::unique_ptr<lox::{EXPRESSION_CLASS}>'
 EXPRESSIONS: dict[str, str] = {
-	'unary'     : f'token op, std::unique_ptr<{EXPRESSION_CLASS}> expr',
-	'assignment': f'token name, std::unique_ptr<{EXPRESSION_CLASS}> value',
-	'binary'    : f'token op, std::unique_ptr<{EXPRESSION_CLASS}> left, std::unique_ptr<{EXPRESSION_CLASS}> right',
-	'grouping'  : f'std::unique_ptr<{EXPRESSION_CLASS}> expr',
+	'unary'     : f'token op, {EXPRESSION_PTR} expr',
+	'assignment': f'token name, {EXPRESSION_PTR} value',
+	'binary'    : f'token op, {EXPRESSION_PTR} left, {EXPRESSION_PTR} right',
+	'grouping'  : f'{EXPRESSION_PTR} expr',
 	'literal'   : 'lox::literal value',
+	'logical'   : f'token op, {EXPRESSION_PTR} left, {EXPRESSION_PTR} right',
 	'identifier': 'token name'
 }
 EXPRESSIONS_INCLUDES: list[str] = [ '<memory>' ]
 
 STATEMENT_CLASS: str = 'statement'
+STATEMENT_PTR: str = f'std::unique_ptr<{STATEMENT_CLASS}>'
 STATEMENTS: dict[str, str] = {
-	'scope'          : f'std::vector<std::unique_ptr<{STATEMENT_CLASS}>> statements',
-	'expression'     : f'std::unique_ptr<lox::{EXPRESSION_CLASS}> expr',
-	'variable'       : f'token identifier, std::unique_ptr<lox::{EXPRESSION_CLASS}> initializer',
-	'constant'       : f'token identifier, std::unique_ptr<lox::{EXPRESSION_CLASS}> initializer',
-	'LOX_DEBUG!print': f'std::unique_ptr<lox::{EXPRESSION_CLASS}> expr'
+	'scope'          : f'std::vector<{STATEMENT_PTR}> statements',
+	'expression'     : f'{EXPRESSION_PTR} expr',
+	'branch'         : f'{STATEMENT_PTR} decl, {EXPRESSION_PTR} condition, {STATEMENT_PTR} then_branch, {STATEMENT_PTR} else_branch',
+	'variable'       : f'token identifier, {EXPRESSION_PTR} initializer',
+	'constant'       : f'token identifier, {EXPRESSION_PTR} initializer',
+	'LOX_DEBUG!print': f'{EXPRESSION_PTR} expr'
 }
 STATEMENT_INCLUDES: list[str] = [ '<vector>' ]
 

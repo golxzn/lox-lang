@@ -1,0 +1,24 @@
+
+const lhv{ 10 };
+const rhv{ 5 };
+
+print "-------------- full if test --------------";
+if (const sum{ lhv + rhv }; sum == 15) {
+	print "HELL YEAH!";
+	print sum;
+} else {
+	print "o_O";
+}
+
+print "------------ full if wo/ init ------------";
+
+if (lhv != rhv) {
+	print "they aren't equal";
+}
+
+print "-------------- full if else --------------";
+
+if (false and true) { } else {
+	print "OMG!";
+}
+

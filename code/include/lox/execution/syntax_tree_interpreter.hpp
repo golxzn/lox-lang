@@ -41,6 +41,7 @@ public:
 	void accept(const expression::binary &binary) override;
 	void accept(const expression::grouping &group) override;
 	void accept(const expression::literal &value) override;
+	void accept(const expression::logical &logic) override;
 	void accept(const expression::identifier &id) override;
 
 #pragma endregion expression::visitor_interface methods
@@ -49,6 +50,7 @@ public:
 
 	void accept(const statement::scope &scope) override;
 	void accept(const statement::expression &expr) override;
+	void accept(const statement::branch &branch) override;
 	void accept(const statement::variable &var) override;
 	void accept(const statement::constant &con) override;
 
