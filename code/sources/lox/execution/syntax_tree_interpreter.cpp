@@ -267,7 +267,9 @@ void syntax_tree_interpreter::accept(const expression::logical &logic) {
 
 	const auto truth{ is_truth(m_output) };
 	if (!truth.has_value()) {
-		/// @todo log error
+		error(lox::error_code::ee_condition_is_not_logical,
+			"Non-logical expression couldn't be used", logic.op
+		);
 		m_output = null_literal;
 		return;
 	}
