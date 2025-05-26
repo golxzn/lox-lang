@@ -15,8 +15,8 @@ constexpr hash_type FNV_prime{ 0x01000193 };
 template<std::integral T>
 [[nodiscard]] constexpr auto fnv1a(std::span<const T> bytes) noexcept -> hash_type {
 	hash_type hash{ offset_basis };
-	for (size_t i{}; i < std::size(bytes); ++i) {
-		hash = (hash ^ static_cast<hash_type>(bytes[i])) * FNV_prime;
+	for (const auto byte : bytes) {
+		hash = (hash ^ static_cast<hash_type>(byte)) * FNV_prime;
 	}
 	return hash;
 }
@@ -28,6 +28,8 @@ template<std::integral CharT>
 
 namespace fnv1a_literals {
 
+#pragma warning(push)
+#pragma warning(disable: 4514)
 [[nodiscard]] consteval auto operator""_fnv1a(const char *str, size_t len) {
 	return fnv1a(std::span{ str, len });
 }
@@ -47,6 +49,7 @@ namespace fnv1a_literals {
 [[nodiscard]] consteval auto operator""_fnv1a(const char32_t *str, size_t len) {
 	return fnv1a(std::span{ str, len });
 }
+#pragma warning(pop)
 
 } // namespace fnv1a_literals
 

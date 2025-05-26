@@ -51,20 +51,9 @@ struct LOX_EXPORT token {
 };
 #pragma pack(pop)
 
-[[nodiscard]] constexpr auto token_hash(token tok) noexcept -> uint64_t {
-	const auto type_and_id_hash{
-		(static_cast<uint64_t>(tok.type) << 16) | static_cast<uint64_t>(tok.literal_id)
-	};
 
-	return ((static_cast<uint64_t>(tok.line) << 32) | static_cast<uint64_t>(tok.position))
-		^ ((type_and_id_hash << 32) | type_and_id_hash);
-}
-
-struct token_hasher {
-	[[nodiscard]] constexpr auto operator()(token tok) const noexcept -> uint64_t {
-		return token_hash(tok);
-	}
-};
+#pragma warning(push)
+#pragma warning(disable: 4061)
 
 [[nodiscard]] constexpr auto keyword_name(const token_type keyword) noexcept -> std::string_view {
 	using namespace std::string_view_literals;
@@ -185,6 +174,8 @@ struct token_hasher {
 
 	return keyword_name(type);
 }
+
+#pragma warning(pop)
 
 [[nodiscard]] auto from_keyword(const std::string_view name) noexcept -> token_type;
 
