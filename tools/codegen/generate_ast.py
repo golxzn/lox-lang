@@ -20,7 +20,7 @@ STATEMENT_PTR: str = f'std::unique_ptr<{STATEMENT_CLASS}>'
 STATEMENTS: dict[str, str] = {
 	'scope'          : f'std::vector<{STATEMENT_PTR}> statements',
 	'expression'     : f'{EXPRESSION_PTR} expr',
-	'branch'         : f'{STATEMENT_PTR} decl, {EXPRESSION_PTR} condition, {STATEMENT_PTR} then_branch, {STATEMENT_PTR} else_branch',
+	'branch'         : f'{EXPRESSION_PTR} condition, {STATEMENT_PTR} then_branch, {STATEMENT_PTR} else_branch',
 	'variable'       : f'token identifier, {EXPRESSION_PTR} initializer',
 	'constant'       : f'token identifier, {EXPRESSION_PTR} initializer',
 	'LOX_DEBUG!print': f'{EXPRESSION_PTR} expr'

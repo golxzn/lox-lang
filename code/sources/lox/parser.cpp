@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "lox/parser.hpp"
+#include "lox/utils/vecutils.hpp"
 
 namespace lox {
 
@@ -33,11 +34,11 @@ auto parser::declaration() -> std::unique_ptr<statement> {
 }
 
 auto parser::storage_declaration() -> std::unique_ptr<statement> {
-	if (match<token_type::kw_const>()) {
-		return constant_declaration();
-	}
-	if (match<token_type::kw_var>()) {
-		return variable_declaration();
+	if (match<token_type::kw_const, token_type::kw_var>()) {
+		return previous().type == token_type::kw_const
+			? constant_declaration()
+			: variable_declaration()
+		;
 	}
 	return nullptr;
 }
@@ -115,27 +116,32 @@ auto parser::branch_stmt() -> std::unique_ptr<statement> {
 
 	consume(left_paren, "Expected '(' after 'if' statement", peek());
 
-	std::unique_ptr<statement> declaration{ storage_declaration() };
-
+	auto declaration{ storage_declaration() };
 	auto condition{ expr() };
 
 	consume(right_paren, "Expected ')' after 'if' condition", peek());
 
 	const auto get_block{ [this] {
 		consume(left_brace, "Branch block '{' is required", peek());
-		auto block{ scope_stmt() };
-		// consume(right_brace, "Expected '}' after branch block", peek());
-		return block;
+		return scope_stmt();
 	} };
 
 	auto then_block{ get_block() };
 
-	return std::make_unique<statement::branch>(
-		std::move(declaration),
+	auto branch{ std::make_unique<statement::branch>(
 		std::move(condition),
 		std::move(then_block),
 		match<kw_else>() ? get_block() : nullptr
-	);
+	) };
+
+	if (declaration) {
+		return std::make_unique<statement::scope>(utils::make_pointers_vector<statement>(
+			std::move(declaration),
+			std::move(branch)
+		));
+	}
+
+	return std::move(branch);
 }
 
 auto parser::scope_stmt() -> std::unique_ptr<statement> {

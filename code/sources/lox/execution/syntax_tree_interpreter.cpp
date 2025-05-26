@@ -317,11 +317,6 @@ void syntax_tree_interpreter::accept(const statement::expression &expr) {
 }
 
 void syntax_tree_interpreter::accept(const statement::branch &branch) {
-	if (branch.decl) {
-		m_env.push_scope();
-		execute(*branch.decl);
-	}
-
 	if (auto truth{ is_truth(evaluate(*branch.condition)) }; truth.has_value()) {
 		if (truth.value()) {
 			if (branch.then_branch) execute(*branch.then_branch);
@@ -330,10 +325,6 @@ void syntax_tree_interpreter::accept(const statement::branch &branch) {
 		}
 	} else {
 		/// @todo LOG ERROR NON LOGICAL CONDITION
-	}
-
-	if (branch.decl) {
-		m_env.pop_scope();
 	}
 }
 
