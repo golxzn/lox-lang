@@ -15,14 +15,16 @@ variable_decl -> "var" IDENTIFIER (":" TYPE)* "{" expression "}" ";"
 statement     -> branch_stmt
                | print_stmt // DEBUG BUILD ONLY
                | loop_stmt
+               | for_loop_stmt
                | scope_stmt
                | expression;
 
-branch_stmt   -> "if" "(" ( declaration ";" )* expression ")" scope_stmt
-                ( "else" scope_stmt )
-print_stmt    -> "print" expression ";":
-loop_stmt     -> "while" "(" ( declaration ";" )* expression ")" scope_stmt
-scope_stmt    -> "{" declaration* "}":
+branch_stmt   -> "if" "(" ( declaration )* expression ")" scope_stmt
+                ( "else" scope_stmt );
+print_stmt    -> "print" expression ";";
+loop_stmt     -> "while" "(" ( declaration )* expression ")" scope_stmt;
+for_loop_stmt -> "for" "(" ( declaration | expression | ";" ) expression? ";" expression? ")" scope_stmt;
+scope_stmt    -> "{" declaration* "}";
 
 expression    -> assignment;
 

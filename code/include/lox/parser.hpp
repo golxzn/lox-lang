@@ -31,16 +31,23 @@ private:
 
 	auto stmt() -> std::unique_ptr<statement>;
 	auto branch_stmt() -> std::unique_ptr<statement>;
-	// auto for_loop_stmt() -> std::unique_ptr<statement>;
 	auto loop_stmt() -> std::unique_ptr<statement>;
-	auto scope_stmt() -> std::unique_ptr<statement>;
+	auto for_loop_stmt() -> std::unique_ptr<statement>;
+	auto scope_stmt() -> std::unique_ptr<statement::scope>;
 
 	template<std::derived_from<statement> Type>
 	auto make_stmt(auto content_gen) -> std::unique_ptr<statement> {
 		auto content{ std::invoke(content_gen, this) };
-		consume(token_type::semicolon, "Expected ';' after statement", peek());
+		consume(token_type::semicolon, "Expected ';' after statement", previous());
 		return std::make_unique<Type>(std::move(content));
 	}
+
+	auto make_declaration_or_expression_stmt() -> std::unique_ptr<statement>;
+	static auto make_loop(
+		std::unique_ptr<statement> declaration,
+		std::unique_ptr<expression> condition,
+		std::unique_ptr<statement> body
+	) -> std::unique_ptr<statement>;
 
 	template<token_type ...Types>
 	auto iterate_through(auto next) -> std::unique_ptr<expression> {

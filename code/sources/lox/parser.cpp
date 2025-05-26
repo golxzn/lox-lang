@@ -4,6 +4,7 @@
 
 #include "lox/parser.hpp"
 #include "lox/utils/vecutils.hpp"
+#include "lox/utils/compile_time.hpp"
 
 namespace lox {
 
@@ -107,6 +108,9 @@ auto parser::stmt() -> std::unique_ptr<statement> {
 	if (match<token_type::kw_while>()) {
 		return loop_stmt();
 	}
+	if (match<token_type::kw_for>()) {
+		return for_loop_stmt();
+	}
 	if (match<token_type::left_brace>()) {
 		return scope_stmt();
 	}
@@ -122,7 +126,7 @@ auto parser::branch_stmt() -> std::unique_ptr<statement> {
 	auto declaration{ storage_declaration() };
 	auto condition{ expr() };
 
-	consume(right_paren, "Expected ')' after 'if' condition", peek());
+	consume(right_paren, "Expected ')' after 'if' condition", peek(), error_code::pe_broken_symmetry);
 
 	const auto get_block{ [this] {
 		consume(left_brace, "Branch requires '{' block", peek());
@@ -155,14 +159,76 @@ auto parser::loop_stmt() -> std::unique_ptr<statement> {
 	auto declaration{ storage_declaration() };
 	auto condition{ expr() };
 
-	consume(right_paren, "Expected ')' after 'while' condition", peek());
+	consume(right_paren, "Expected ')' after 'while' condition", peek(), error_code::pe_broken_symmetry);
 
 	const auto get_block{ [this] {
 		consume(left_brace, "'while' requires '{' block", peek());
 		return scope_stmt();
 	} };
 
-	auto loop{ std::make_unique<statement::loop>(std::move(condition), get_block()) };
+	return make_loop(std::move(declaration), std::move(condition), get_block());
+}
+
+auto parser::for_loop_stmt() -> std::unique_ptr<statement> {
+	using enum token_type;
+
+	consume(left_paren, "Expected '(' after 'while' statement", peek());
+
+	auto declaration{ make_declaration_or_expression_stmt() };
+	auto condition{ match<semicolon>() ? std::make_unique<expression::literal>(true) : expr() };
+	consume(semicolon, "Expected ';' after 'for' condition", peek(),
+		error_code::pe_missing_end_of_statement
+	);
+
+	auto increment{ match<right_paren>() ? nullptr : expr() };
+	consume(right_paren, "Expected ')' after 'while' condition", peek(), error_code::pe_broken_symmetry);
+
+	consume(left_brace, "'for' requires '{' block", peek());
+
+	auto body{ scope_stmt() };
+	if (increment) {
+		body->statements.emplace_back(std::make_unique<statement::expression>(std::move(increment)));
+	}
+	return make_loop(std::move(declaration), std::move(condition), std::move(body));
+}
+
+auto parser::scope_stmt() -> std::unique_ptr<statement::scope> {
+	using enum token_type;
+
+	std::vector<std::unique_ptr<statement>> statements{};
+	while (!at_end() && !utils::ct::any_from(right_brace, peek().type, previous().type)) {
+		statements.emplace_back(declaration());
+	}
+	if (const auto &prev{ previous() }; prev.type == right_brace) {
+		make_error("It seems like there should be ';' before '}'",
+			error_code::pe_missing_end_of_statement, prev
+		);
+	} else {
+		consume(right_brace, "Expected '}' after block", peek(),
+			error_code::pe_broken_symmetry
+		);
+	}
+	return std::make_unique<statement::scope>(std::move(statements));
+}
+
+auto parser::make_declaration_or_expression_stmt() -> std::unique_ptr<statement> {
+	if (match<token_type::semicolon>()) {
+		return nullptr;
+	}
+
+	if (auto declaration{ storage_declaration() }; declaration) {
+		return std::move(declaration);
+	}
+
+	return make_stmt<statement::expression>(&parser::expr);
+}
+
+auto parser::make_loop(
+	std::unique_ptr<statement> declaration,
+	std::unique_ptr<expression> condition,
+	std::unique_ptr<statement> body
+) -> std::unique_ptr<statement> {
+	auto loop{ std::make_unique<statement::loop>(std::move(condition), std::move(body)) };
 	if (declaration) {
 		return std::make_unique<statement::scope>(utils::make_pointers_vector<statement>(
 			std::move(declaration),
@@ -171,17 +237,6 @@ auto parser::loop_stmt() -> std::unique_ptr<statement> {
 	}
 
 	return std::move(loop);
-}
-
-auto parser::scope_stmt() -> std::unique_ptr<statement> {
-	std::vector<std::unique_ptr<statement>> statements{};
-	while (!check(token_type::right_brace)) {
-		statements.emplace_back(declaration());
-	}
-	consume(token_type::right_brace, "Expected '}' after block", peek(),
-		error_code::pe_broken_symmetry
-	);
-	return std::make_unique<statement::scope>(std::move(statements));
 }
 
 auto parser::expr() -> std::unique_ptr<expression> {
