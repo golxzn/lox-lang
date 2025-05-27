@@ -37,6 +37,7 @@ public:
 #pragma region expression::visitor_interface methods
 
 	void accept(const expression::unary &unary) override;
+	void accept(const expression::incdec &incdec) override;
 	void accept(const expression::assignment &assign) override;
 	void accept(const expression::binary &binary) override;
 	void accept(const expression::grouping &group) override;
@@ -70,6 +71,7 @@ private:
 	bool got_runtime_error{ false };
 
 	void execute_block(const std::vector<std::unique_ptr<statement>> &statements);
+	void safe_assign(const token &tok, literal value);
 
 	auto error_no_suitable(const token &op, const literal &value) const -> execution_error;
 	auto error_no_suitable(const token &op, const literal &lhv, const literal &rhv) const -> execution_error;

@@ -183,20 +183,64 @@ void syntax_tree_interpreter::accept(const expression::unary &unary) {
 	m_output = std::move(value);
 }
 
+void syntax_tree_interpreter::accept(const expression::incdec &incdec) {
+	const auto id{ incdec.name.lexeme_id };
+
+	if (!m_env.contains(id, execution::search_range::globally)) {
+		error(error_code::ee_undefined_identifier, std::format(
+			R"(Undefined variable "{}")", lexemes.get().get(id)
+		), incdec.name);
+	}
+
+	const auto &value{ m_env.look_up(id) };
+	if (!is_suitable_for(incdec.op.type, value.type())) {
+		throw error_no_suitable(incdec.op, value);
+		return;
+	}
+
+	auto assign_output{ [&name{ incdec.name }, this] (auto value) {
+		safe_assign(name, std::move(value));
+		return evaluation_result{};
+	} };
+	auto throw_error{ [this, &op{ incdec.op }] (const auto &msg) {
+		throw error(error_code::ee_runtime_error, msg, op);
+	} };
+
+	[op{ incdec.op.type }, &value] {
+		switch (op) {
+			using enum token_type;
+			case increment: return operation<plus>::eval(value, literal{ 1 });
+			case decrement: return operation<minus>::eval(value, literal{ 1 });
+			default: break;
+		}
+
+		return evaluation_result{ tl::make_unexpected(
+			std::format("Unknown operation '{}' ({})", token_string(op), token_name(op))
+		) };
+	}()
+		.and_then(std::move(assign_output))
+		.or_else(std::move(throw_error))
+	;
+}
+
 void syntax_tree_interpreter::accept(const expression::assignment &assign) {
-	switch (m_env.assign(assign.name.lexeme_id, evaluate(*assign.value))) {
+	safe_assign(assign.name, evaluate(*assign.value));
+}
+
+void syntax_tree_interpreter::safe_assign(const token &tok, literal value) {
+	switch (m_env.assign(tok.lexeme_id, std::move(value))) {
 		using enum environment::assignment_status;
 
 		case not_found:
 			error(error_code::ee_undefined_identifier, std::format(
-				R"(Undefined variable "{}")", lexemes.get().get(assign.name.lexeme_id)
-			), assign.name);
+				R"(Undefined variable "{}")", lexemes.get().get(tok.lexeme_id)
+			), tok);
 			break;
 
 		case constant:
 			error(error_code::ee_constant_assignment, std::format(
-				R"(Attempt to assign "{}" constant)", lexemes.get().get(assign.name.lexeme_id)
-			), assign.name);
+				R"(Attempt to assign "{}" constant)", lexemes.get().get(tok.lexeme_id)
+			), tok);
 			break;
 
 		default: break;
@@ -447,6 +491,10 @@ auto syntax_tree_interpreter::is_suitable_for(token_type op, literal_type type) 
 		case token_type::slash: [[fallthrough]];
 		case token_type::star:
 			return utils::ct::any_from<number, integral>(type);
+
+		case token_type::increment: [[fallthrough]];
+		case token_type::decrement:
+			return type == integral;
 
 		case token_type::bang: [[fallthrough]];
 		case token_type::bang_equal: [[fallthrough]];

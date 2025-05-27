@@ -14,13 +14,17 @@ enum class token_type : uint8_t {
 	// Single character tokens
 	left_paren, right_paren,
 	left_brace, right_brace,
-	comma, dot, minus, plus, semicolon, slash, star,
+	comma, semicolon, dot,
+	minus, plus, slash, star,
 
 	// One-two characters tokens
 	bang, bang_equal,
 	equal, equal_equal,
 	less, less_equal,
 	greater, greater_equal,
+
+	increment, decrement,
+	minus_equal, plus_equal, slash_equal, star_equal,
 
 	// Literals
 	identifier, string, number, boolean, null,
@@ -39,7 +43,6 @@ enum class token_type : uint8_t {
 
 constexpr uint16_t invalid_id{ (std::numeric_limits<uint16_t>::max)() };
 
-#pragma pack(push, 1)
 struct LOX_EXPORT token {
 	uint32_t line{};
 	uint32_t position{};
@@ -49,7 +52,6 @@ struct LOX_EXPORT token {
 
 	[[nodiscard]] constexpr auto operator==(const token &other) const noexcept -> bool = default;
 };
-#pragma pack(pop)
 
 
 #pragma warning(push)
@@ -116,6 +118,13 @@ struct LOX_EXPORT token {
 		case less_equal:    return "less_equal"sv;
 		case greater:       return "greater"sv;
 		case greater_equal: return "greater_equal"sv;
+
+		case increment:     return "increment"sv;
+		case decrement:     return "decrement"sv;
+		case minus_equal:   return "minus_equal"sv;
+		case plus_equal:    return "plus_equal"sv;
+		case slash_equal:   return "slash_equal"sv;
+		case star_equal:    return "star_equal"sv;
 		default: break;
 	}
 
@@ -165,6 +174,13 @@ struct LOX_EXPORT token {
 		case less_equal:    return "<="sv;
 		case greater:       return ">"sv;
 		case greater_equal: return ">="sv;
+
+		case increment:     return "++"sv;
+		case decrement:     return "--"sv;
+		case minus_equal:   return "-="sv;
+		case plus_equal:    return "+="sv;
+		case slash_equal:   return "/="sv;
+		case star_equal:    return "*="sv;
 
 	// Literals
 		case null:          return "null"sv;

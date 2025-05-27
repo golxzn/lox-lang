@@ -28,7 +28,8 @@ scope_stmt    -> "{" declaration* "}";
 
 expression    -> assignment;
 
-assignment    -> IDENTIFIER "=" assignment
+assignment    -> ( "++" | "--" ) IDENTIFIER
+               | IDENTIFIER ( "=" | "-=" | "+=" | "*=" | "/=" ) assignment
                | logical_or;
 logical_or    -> logical_and ( "or" logical_and )*;
 logical_and   -> equality ( "and" equality )*;

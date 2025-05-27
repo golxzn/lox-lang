@@ -89,6 +89,7 @@ private:
 	}
 
 	auto expr() -> std::unique_ptr<expression>;
+	auto incdec() -> std::unique_ptr<expression>;
 	auto assignment() -> std::unique_ptr<expression>;
 	auto logical_or() -> std::unique_ptr<expression>;
 	auto logical_and() -> std::unique_ptr<expression>;

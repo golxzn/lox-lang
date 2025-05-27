@@ -70,6 +70,7 @@ auto scanner::next_token(uint32_t pos, output_type &output) -> uint32_t {
 		return 0u;
 	} };
 
+	const auto is_next_equal{ next_is('=') };
 
 	switch (symbol) {
 		case '(': return add_token(token_type::left_paren);
@@ -78,14 +79,27 @@ auto scanner::next_token(uint32_t pos, output_type &output) -> uint32_t {
 		case '}': return add_token(token_type::right_brace);
 		case ';': return add_token(token_type::semicolon);
 		case ',': return add_token(token_type::comma);
-		case '-': return add_token(token_type::minus);
-		case '+': return add_token(token_type::plus);
-		case '*': return add_token(token_type::star);
+		case '-':
+			if (next_is('-')) {
+				return add_token(token_type::decrement);
+			}
+			return add_token(is_next_equal ? token_type::minus_equal : token_type::minus) + is_next_equal;
+		case '+':
+			if (next_is('+')) {
+				return add_token(token_type::increment) + 1;
+			}
+			return add_token(is_next_equal ? token_type::plus_equal : token_type::plus) + is_next_equal;
+
+		case '*': return add_token(is_next_equal ? token_type::star_equal : token_type::star) + is_next_equal;
 		case '/':
 			if (next_is('/')) {
 				return skip_till('\n', pos + 2);
-			} else if (next_is('*')) {
+			}
+			if (next_is('*')) {
 				return skip_multiline_comment(pos + 2);
+			}
+			if (is_next_equal) {
+				return add_token(token_type::slash_equal) + 1;
 			}
 			return add_token(token_type::slash);
 
@@ -95,7 +109,6 @@ auto scanner::next_token(uint32_t pos, output_type &output) -> uint32_t {
 		default: break;
 	}
 
-	const auto is_next_equal{ next_is('=') };
 	switch (symbol) {
 		case '!': return add_token(
 			is_next_equal ? token_type::bang_equal : token_type::bang,

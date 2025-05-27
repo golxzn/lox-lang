@@ -6,6 +6,7 @@ EXPRESSION_CLASS: str = 'expression'
 EXPRESSION_PTR: str = f'std::unique_ptr<lox::{EXPRESSION_CLASS}>'
 EXPRESSIONS: dict[str, str] = {
 	'unary'     : f'token op, {EXPRESSION_PTR} expr',
+	'incdec'    : f'token name, token op',
 	'assignment': f'token name, {EXPRESSION_PTR} value',
 	'binary'    : f'token op, {EXPRESSION_PTR} left, {EXPRESSION_PTR} right',
 	'grouping'  : f'{EXPRESSION_PTR} expr',

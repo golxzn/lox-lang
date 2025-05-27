@@ -180,14 +180,14 @@ auto parser::for_loop_stmt() -> std::unique_ptr<statement> {
 		error_code::pe_missing_end_of_statement
 	);
 
-	auto increment{ match<right_paren>() ? nullptr : expr() };
+	auto increment_expr{ match<right_paren>() ? nullptr : expr() };
 	consume(right_paren, "Expected ')' after 'while' condition", peek(), error_code::pe_broken_symmetry);
 
 	consume(left_brace, "'for' requires '{' block", peek());
 
 	auto body{ scope_stmt() };
-	if (increment) {
-		body->statements.emplace_back(std::make_unique<statement::expression>(std::move(increment)));
+	if (increment_expr) {
+		body->statements.emplace_back(std::make_unique<statement::expression>(std::move(increment_expr)));
 	}
 	return make_loop(std::move(declaration), std::move(condition), std::move(body));
 }
@@ -240,22 +240,67 @@ auto parser::make_loop(
 }
 
 auto parser::expr() -> std::unique_ptr<expression> {
+	return incdec();
+}
+
+auto parser::incdec() -> std::unique_ptr<expression> {
+	using enum token_type;
+
+	if (match<increment, decrement>()) {
+		const auto &op{ previous() };
+		auto identifier{ logical_or() };
+		if (identifier->type() != expression::tag::identifier) {
+			make_error(std::format("Invalid {} target.", token_name(op.type)),
+				lox::error_code::pe_lvalue_assignment, op
+			);
+			return std::move(identifier);
+		}
+		const auto &name{ static_cast<const expression::identifier *>(identifier.get())->name };
+		return std::make_unique<expression::incdec>(name, op);
+	}
+
 	return assignment();
 }
 
 auto parser::assignment() -> std::unique_ptr<expression> {
+	using enum token_type;
+
 	auto expr_{ logical_or() };
 
-	if (match<token_type::equal>()) {
+	static constexpr auto convert_to_binary_op{ [] (const auto type) {
+		switch (type) {
+			case equal: return equal;
+			case plus_equal: return plus;
+			case minus_equal: return minus;
+			case star_equal: return star;
+			case slash_equal: return slash;
+			default: break;
+		}
+		return invalid;
+	} };
+
+
+	if (match<equal, plus_equal, minus_equal, star_equal, slash_equal>()) {
 		const auto &equals_token{ previous() };
-		if (auto value{ assignment() }; expr_->type() != expression::tag::assignment) {
-			return std::make_unique<expression::assignment>(
-				static_cast<const expression::identifier *>(expr_.get())->name,
-				std::move(value)
-			);
+		auto value{ assignment() };
+		if (expr_->type() != expression::tag::identifier) {
+			make_error("Invalid assignment target.", lox::error_code::pe_lvalue_assignment, equals_token);
+			return std::move(expr_);
 		}
 
-		make_error("Invalid assignment target.", lox::error_code::pe_lvalue_assignment, equals_token);
+		const auto &name{ static_cast<const expression::identifier *>(expr_.get())->name };
+		const auto operation_type{ convert_to_binary_op(equals_token.type) };
+		if (operation_type == equal) {
+			return std::make_unique<expression::assignment>(name, std::move(value));
+		}
+
+		return std::make_unique<expression::assignment>(name,
+			std::make_unique<expression::binary>(token{
+				.line = equals_token.line,
+				.position = equals_token.position,
+				.type = operation_type
+			}, std::move(expr_), std::move(value))
+		);
 	}
 
 	return expr_;
@@ -340,7 +385,8 @@ void parser::synchronize() {
 			case kw_if: [[fallthrough]];
 			case kw_while: [[fallthrough]];
 			case kw_return: [[fallthrough]];
-			case semicolon:
+			case semicolon: [[fallthrough]];
+			case right_brace:
 				return;
 
 			default: break;
