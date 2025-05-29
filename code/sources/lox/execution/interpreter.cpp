@@ -9,7 +9,7 @@
 
 #include <tl/expected.hpp>
 
-#include "lox/execution/syntax_tree_interpreter.hpp"
+#include "lox/execution/interpreter.hpp"
 #include "lox/utils/compile_time.hpp"
 
 namespace lox::execution {
@@ -128,43 +128,44 @@ struct operation<token_type::plus> {
 } // namespace
 
 
-syntax_tree_interpreter::syntax_tree_interpreter(const lexeme_database &lexemes, error_handler &handler) noexcept
-	: lexemes{ lexemes }, errout{ handler } {}
+interpreter::interpreter(
+	const program &prog,
+	const lexeme_database &lexemes,
+	error_handler &handler
+) noexcept : prog{ prog }, lexemes{ lexemes }, errout{ handler } {}
 
-auto syntax_tree_interpreter::run(program &prog) -> status try {
-	for (const auto &stmt : prog) {
-		if (!stmt) [[unlikely]] {
-			return status::invalid_program;
-		}
-		execute(*stmt);
+auto interpreter::run() -> status try {
+	for (const auto &stmt : prog.get()) {
+		execute(stmt);
 	}
 	return status::ok;
+} catch (const execution_error &err) {
+	return err.reason;
+}
+
+void interpreter::execute(statement_id stmt) {
+	if (std::empty(stmt)) return; /// @todo log error
+	// if (!prog.get().contains(stmt)) return;
+
+	prog.get().accept(*this, stmt);
+}
+
+auto interpreter::evaluate(expression_id expr) -> literal try {
+	if (std::empty(expr)) return null_literal; /// @todo log error
+
+	return prog.get().accept(*this, expr);
 } catch (const execution_error &) {
-	return status::runtime_error;
-}
-
-auto syntax_tree_interpreter::evaluate(expression &expr) -> literal {
-	m_output = {};
-	try {
-		expr.accept(*this);
-	} catch (const execution_error &err) {
-		got_runtime_error = true;
-	}
-	return m_output;
-}
-
-void syntax_tree_interpreter::execute(statement &stmt) {
-	stmt.accept(*this);
+	return null_literal;
 }
 
 #pragma region expression::visitor_interface methods
 
-void syntax_tree_interpreter::accept(const expression::unary &unary) {
-	if (!unary.expr) {
+auto interpreter::accept(const expression_unary &unary) -> literal {
+	if (std::empty(unary.expr)) {
 		error(error_code::ee_missing_expression, "", unary.op);
 	}
 
-	auto value{ evaluate(*unary.expr) };
+	auto value{ evaluate(unary.expr) };
 	if (!is_suitable_for(unary.op.type, value.type())) {
 		throw error_no_suitable(unary.op, value);
 	}
@@ -173,17 +174,17 @@ void syntax_tree_interpreter::accept(const expression::unary &unary) {
 		using enum token_type;
 
 		case plus: break;
-		case minus: if (!negate_number(value)) value = {}; break;
-		case bang:  if (!inverse_boolean(value)) value = {}; break;
+		case minus: if (negate_number(value)) return value; break;
+		case bang:  if (inverse_boolean(value)) return value; break;
 
 		default:
-			return;
+			return null_literal;
 	}
 
-	m_output = std::move(value);
+	return null_literal;
 }
 
-void syntax_tree_interpreter::accept(const expression::incdec &incdec) {
+auto interpreter::accept(const expression_incdec &incdec) -> literal {
 	const auto id{ incdec.name.lexeme_id };
 
 	if (!m_env.contains(id, execution::search_range::globally)) {
@@ -195,7 +196,7 @@ void syntax_tree_interpreter::accept(const expression::incdec &incdec) {
 	const auto &value{ m_env.look_up(id) };
 	if (!is_suitable_for(incdec.op.type, value.type())) {
 		throw error_no_suitable(incdec.op, value);
-		return;
+		return null_literal;
 	}
 
 	auto assign_output{ [&name{ incdec.name }, this] (auto value) {
@@ -223,50 +224,29 @@ void syntax_tree_interpreter::accept(const expression::incdec &incdec) {
 	;
 }
 
-void syntax_tree_interpreter::accept(const expression::assignment &assign) {
-	safe_assign(assign.name, evaluate(*assign.value));
+auto interpreter::accept(const expression_assignment &assign) -> literal {
+	const auto literal{ evaluate(assign.value) };
+	safe_assign(assign.name, literal);
+	return literal;
 }
 
-void syntax_tree_interpreter::safe_assign(const token &tok, literal value) {
-	switch (m_env.assign(tok.lexeme_id, std::move(value))) {
-		using enum environment::assignment_status;
-
-		case not_found:
-			error(error_code::ee_undefined_identifier, std::format(
-				R"(Undefined variable "{}")", lexemes.get().get(tok.lexeme_id)
-			), tok);
-			break;
-
-		case constant:
-			error(error_code::ee_constant_assignment, std::format(
-				R"(Attempt to assign "{}" constant)", lexemes.get().get(tok.lexeme_id)
-			), tok);
-			break;
-
-		default: break;
-	}
-}
-
-void syntax_tree_interpreter::accept(const expression::binary &expr) {
-	if (!expr.left || !expr.right) {
+auto interpreter::accept(const expression_binary &expr) -> literal {
+	if (std::empty(expr.left) || std::empty(expr.right)) {
+		/// @todo Add description
 		error(error_code::ee_missing_expression, "", expr.op);
 	}
 
-	auto lhv{ evaluate(*expr.left) };
-	auto rhv{ evaluate(*expr.right) };
+	auto lhv{ evaluate(expr.left) };
+	auto rhv{ evaluate(expr.right) };
 	if (!is_suitable_for(expr.op.type, lhv.type(), rhv.type())) {
 		throw error_no_suitable(expr.op, lhv, rhv);
 	}
 
-	auto assign_output{ [&out{ m_output }] (auto value) {
-		out = std::move(value);
-		return evaluation_result{};
-	} };
 	auto throw_error{ [this, &op{ expr.op }] (const auto &msg) {
 		throw error(error_code::ee_runtime_error, msg, op);
 	} };
 
-	[op{ expr.op.type }, &lhv, &rhv] {
+	return [op{ expr.op.type }, &lhv, &rhv] {
 		switch (op) {
 			using enum token_type;
 
@@ -289,85 +269,85 @@ void syntax_tree_interpreter::accept(const expression::binary &expr) {
 			std::format("Unknown operation '{}' ({})", token_string(op), token_name(op))
 		) };
 	}()
-		.and_then(std::move(assign_output))
 		.or_else(std::move(throw_error))
+		.value_or(null_literal)
 	;
 }
 
-void syntax_tree_interpreter::accept(const expression::grouping &group) {
-	if (group.expr) {
-		m_output = evaluate(*group.expr);
+auto interpreter::accept(const expression_grouping &group) -> literal {
+	if (!std::empty(group.expr)) {
+		return evaluate(group.expr);
 	} else {
 		error(error_code::ee_missing_expression, "");
 	}
 }
 
-void syntax_tree_interpreter::accept(const expression::literal &value) {
-	m_output = value.value;
+auto interpreter::accept(const expression_literal &value) -> literal {
+	return value.value;
 }
 
-void syntax_tree_interpreter::accept(const expression::logical &logic) {
-	m_output = evaluate(*logic.left);
-
-	const auto truth{ is_truth(m_output) };
+auto interpreter::accept(const expression_logical &logic) -> literal {
+	const auto result{ evaluate(logic.left) };
+	const auto truth{ is_truth(result) };
 	if (!truth.has_value()) {
 		error(lox::error_code::ee_condition_is_not_logical,
 			"Non-logical expression couldn't be used", logic.op
 		);
-		m_output = null_literal;
-		return;
+		return null_literal;
 	}
 
 	switch (logic.op.type) {
 		case token_type::kw_or:
-			if (truth.value()) return;
+			if (truth.value()) return null_literal;
 			break;
 
 		case token_type::kw_and:
-			if (!truth.value()) return;
+			if (!truth.value()) return null_literal;
 			break;
 
 		default:
+			/// @todo error message
 			// error(lox::error_code::ee_)
-			return;
+			return null_literal;
 	}
 
-	m_output = evaluate(*logic.right);
+	return evaluate(logic.right);
 }
 
-void syntax_tree_interpreter::accept(const expression::identifier &id) {
+auto interpreter::accept(const expression_identifier &id) -> literal {
 	if (m_env.contains(id.name.lexeme_id, execution::search_range::globally)) {
-		m_output = m_env.look_up(id.name.lexeme_id);
-		return;
+		return m_env.look_up(id.name.lexeme_id);
+		return null_literal;
 	}
 
 	error(error_code::ee_undefined_identifier, std::format(
 		R"(Undefined identifier "{}")", lexemes.get().get(id.name.lexeme_id)
 	), id.name);
+	return null_literal;
 }
 
 #pragma endregion expression::visitor_interface methods
 
 #pragma region statement::visitor_interface methods
 
-void syntax_tree_interpreter::accept(const statement::scope &scope) {
+void interpreter::accept(const statement_scope &scope) {
 	execute_block(scope.statements);
 }
 
-void syntax_tree_interpreter::accept(const statement::expression &expr) {
-	if (expr.expr) {
-		m_output = evaluate(*expr.expr);
+void interpreter::accept(const statement_expression &expr) {
+	if (!std::empty(expr.expr)) {
+		m_output = evaluate(expr.expr);
 	} else {
 		error(error_code::ee_missing_expression, "");
 	}
 }
 
-void syntax_tree_interpreter::accept(const statement::branch &branch) {
-	if (auto truth{ is_truth(evaluate(*branch.condition)) }; truth.has_value()) {
+void interpreter::accept(const statement_branch &branch) {
+	if (auto truth{ is_truth(evaluate(branch.condition)) }; truth.has_value()) {
 		if (truth.value()) {
-			if (branch.then_branch) execute(*branch.then_branch);
+			if (!std::empty(branch.then_branch)) execute(branch.then_branch);
 		} else {
-			if (branch.else_branch) execute(*branch.else_branch);
+			if (!std::empty(branch.else_branch)) execute(branch.else_branch);
 		}
 	} else {
 		error(lox::error_code::ee_condition_is_not_logical,
@@ -376,43 +356,43 @@ void syntax_tree_interpreter::accept(const statement::branch &branch) {
 	}
 }
 
-void syntax_tree_interpreter::accept(const statement::variable &var) {
+void interpreter::accept(const statement_variable &var) {
 	if (m_env.contains(var.identifier.lexeme_id)) {
 		error(error_code::ee_identifier_already_exists, std::format(
 			R"(Variable "{}" is already defined)", lexemes.get().get(var.identifier.lexeme_id)
 		), var.identifier);
 	}
 	std::ignore = m_env.define_variable(var.identifier.lexeme_id,
-		var.initializer ? evaluate(*var.initializer) : null_literal
+		!std::empty(var.initializer) ? evaluate(var.initializer) : null_literal
 	);
 }
 
-void syntax_tree_interpreter::accept(const statement::constant &con) {
+void interpreter::accept(const statement_constant &con) {
 	if (m_env.contains(con.identifier.lexeme_id)) {
 		error(error_code::ee_identifier_already_exists, std::format(
 			R"(Constant "{}" is already defined)", lexemes.get().get(con.identifier.lexeme_id)
 		), con.identifier);
 	}
-	if (!con.initializer) {
+	if (std::empty(con.initializer)) {
 		error(error_code::ee_missing_expression, std::format(
 			R"(Constant "{}" wasn't initialized)", lexemes.get().get(con.identifier.lexeme_id)
 		), con.identifier);
 	}
 
-	std::ignore = m_env.define_constant(con.identifier.lexeme_id, evaluate(*con.initializer));
+	std::ignore = m_env.define_constant(con.identifier.lexeme_id, evaluate(con.initializer));
 }
 
-void syntax_tree_interpreter::accept(const statement::loop &loop) {
-	const auto make_condition{ [this, &loop] { return is_truth(evaluate(*loop.condition)); }};
+void interpreter::accept(const statement_loop &loop) {
+	const auto make_condition{ [this, &loop] { return is_truth(evaluate(loop.condition)); }};
 
 	auto cond{ make_condition() };
-	if (loop.body) {
-		for (; cond.value_or(false); cond = make_condition()) {
-			execute(*loop.body);
-		}
-	} else {
+	if (std::empty(loop.body)) {
 		while (cond.value_or(false)) {
 			cond = make_condition();
+		}
+	} else {
+		for (; cond.value_or(false); cond = make_condition()) {
+			execute(loop.body);
 		}
 	}
 
@@ -426,9 +406,9 @@ void syntax_tree_interpreter::accept(const statement::loop &loop) {
 
 #if defined(LOX_DEBUG)
 
-void syntax_tree_interpreter::accept(const statement::print &print) {
-	if (print.expr) {
-		m_output = evaluate(*print.expr);
+void interpreter::accept(const statement_print &print) {
+	if (!std::empty(print.expr)) {
+		m_output = evaluate(print.expr);
 		std::fprintf(stdout, "%s\n", std::data(lox::to_string(m_output)));
 	} else {
 		error(error_code::ee_missing_expression, "");
@@ -440,17 +420,36 @@ void syntax_tree_interpreter::accept(const statement::print &print) {
 
 #pragma endregion statement::visitor_interface methods
 
-void syntax_tree_interpreter::execute_block(const std::vector<std::unique_ptr<statement>> &statements) {
+void interpreter::execute_block(const program::statement_list &statements) {
 	m_env.push_scope();
 	try {
 		for (const auto &statement : statements) {
-			if (statement) execute(*statement);
+			execute(statement);
 		}
 	} catch (...) {}
 	m_env.pop_scope();
 }
 
-auto syntax_tree_interpreter::error_no_suitable(const token &op, const literal &value) const -> execution_error {
+void interpreter::safe_assign(const token &tok, literal value) {
+	switch (m_env.assign(tok.lexeme_id, std::move(value))) {
+		using enum environment::assignment_status;
+
+		case not_found:
+			error(error_code::ee_undefined_identifier, std::format(
+				R"(Undefined variable "{}")", lexemes.get().get(tok.lexeme_id)
+			), tok);
+			break;
+
+		case constant:
+			error(error_code::ee_constant_assignment, std::format(
+				R"(Attempt to assign "{}" constant)", lexemes.get().get(tok.lexeme_id)
+			), tok);
+			break;
+
+		default: break;
+	}
+}
+auto interpreter::error_no_suitable(const token &op, const literal &value) const -> execution_error {
 	return error(error_code::ee_literal_not_suitable_for_operation,
 		std::format("Value '{}' is not suitable for '{}' ('{}') unary operation",
 			to_string(value), token_string(op.type), token_name(op.type)
@@ -458,13 +457,13 @@ auto syntax_tree_interpreter::error_no_suitable(const token &op, const literal &
 	);
 }
 
-auto syntax_tree_interpreter::error_no_suitable(const token &op, const literal &lhv, const literal &rhv) const -> execution_error {
+auto interpreter::error_no_suitable(const token &op, const literal &lhv, const literal &rhv) const -> execution_error {
 	return error(error_code::ee_literal_not_suitable_for_operation,
 		make_no_operator_error(op.type, lhv, rhv), op
 	);
 }
 
-auto syntax_tree_interpreter::error(error_code err_no, std::string_view msg, const token &tok) const -> execution_error {
+auto interpreter::error(error_code err_no, std::string_view msg, const token &tok) const -> execution_error {
 	errout.get().report(msg, error_record{
 		.code = err_no,
 		.line = tok.line,
@@ -474,14 +473,14 @@ auto syntax_tree_interpreter::error(error_code err_no, std::string_view msg, con
 	return execution_error{ std::data(msg) };
 }
 
-auto syntax_tree_interpreter::error(error_code err_no, std::string_view msg) const -> execution_error {
+auto interpreter::error(error_code err_no, std::string_view msg) const -> execution_error {
 	errout.get().report(msg, error_record{
 		.code = err_no
 	});
 	return execution_error{ std::data(msg) };
 }
 
-auto syntax_tree_interpreter::is_suitable_for(token_type op, literal_type type) -> bool {
+auto interpreter::is_suitable_for(token_type op, literal_type type) -> bool {
 	/* THIS IS FOR UNARY OPERATIONS */
 
 	using enum literal_type;
@@ -507,7 +506,7 @@ auto syntax_tree_interpreter::is_suitable_for(token_type op, literal_type type) 
 	return false;
 }
 
-auto syntax_tree_interpreter::is_suitable_for(token_type op, literal_type lhv, literal_type rhv) -> bool {
+auto interpreter::is_suitable_for(token_type op, literal_type lhv, literal_type rhv) -> bool {
 	/* THIS IS FOR BINARY OPERATIONS */
 	using enum literal_type;
 
@@ -540,7 +539,7 @@ auto syntax_tree_interpreter::is_suitable_for(token_type op, literal_type lhv, l
 	return false;
 }
 
-auto syntax_tree_interpreter::is_truth(const literal &value) -> std::optional<bool> {
+auto interpreter::is_truth(const literal &value) -> std::optional<bool> {
 	if (value.is(literal_type::null)) {
 		return false;
 	}
@@ -559,7 +558,7 @@ auto syntax_tree_interpreter::is_truth(const literal &value) -> std::optional<bo
 	return std::nullopt;
 }
 
-auto syntax_tree_interpreter::negate_number(literal &value) -> bool {
+auto interpreter::negate_number(literal &value) -> bool {
 	if (auto real_number{ value.as<double>() }; real_number) {
 		*real_number = -*real_number;
 		return true;
@@ -571,7 +570,7 @@ auto syntax_tree_interpreter::negate_number(literal &value) -> bool {
 	return false;
 }
 
-auto syntax_tree_interpreter::inverse_boolean(literal &value) -> bool {
+auto interpreter::inverse_boolean(literal &value) -> bool {
 	if (auto res{ is_truth(value) }; res.has_value()) {
 		value = res.value();
 		return true;

@@ -14,46 +14,49 @@ parser::parser(const context &ctx, error_handler &errs) noexcept
 {}
 
 auto parser::parse() -> program {
-	program prog{};
+	program out{};
+
 	while (!at_end()) {
-		prog.emplace_back(declaration());
+		out.add_statement(declaration(out));
 	}
-	return prog;
+
+	return out;
 }
 
-auto parser::declaration() -> std::unique_ptr<statement> {
+auto parser::declaration(program &prog) -> statement_id {
 	try {
-		if (auto storage{ storage_declaration() }; storage) {
-			return std::move(storage);
+		if (auto storage{ storage_declaration(prog) }; !std::empty(storage)) {
+			return storage;
 		}
 
-		return stmt();
+		return stmt(prog);
 	} catch (const error &e) {
 		synchronize();
 	}
-	return nullptr;
+
+	return statement_id{};
 }
 
-auto parser::storage_declaration() -> std::unique_ptr<statement> {
+auto parser::storage_declaration(program &prog) -> statement_id {
 	if (match<token_type::kw_const, token_type::kw_var>()) {
 		return previous().type == token_type::kw_const
-			? constant_declaration()
-			: variable_declaration()
+			? constant_declaration(prog)
+			: variable_declaration(prog)
 		;
 	}
-	return nullptr;
+	return statement_id{};
 }
 
-auto parser::variable_declaration() -> std::unique_ptr<statement> {
+auto parser::variable_declaration(program &prog) -> statement_id {
 	// var IDENTIFIER[: str][{ expression }];
 
 	auto identifier{ consume(token_type::identifier, "Expected variable name", peek()) };
 
-	std::unique_ptr<expression> expr_{};
+	expression_id expr_{};
 	if (match<token_type::left_brace>()) {
 		const auto &init_start{ peek() };
 		if (!match<token_type::right_brace>()) {
-			expr_ = expr();
+			expr_ = expr(prog);
 			consume(token_type::right_brace, "Missed '}' brace during variable initialization",
 				init_start, error_code::pe_broken_symmetry
 			);
@@ -62,10 +65,10 @@ auto parser::variable_declaration() -> std::unique_ptr<statement> {
 
 	match<token_type::semicolon>(); // Skip it if presented. No one cares
 
-	return std::make_unique<statement::variable>(identifier, std::move(expr_));
+	return prog.emplace<statement_type::variable>(identifier, expr_);
 }
 
-auto parser::constant_declaration() -> std::unique_ptr<statement> {
+auto parser::constant_declaration(program &prog) -> statement_id {
 	auto identifier{ consume(token_type::identifier, "Expected variable name", peek()) };
 
 	consume(token_type::left_brace,
@@ -73,11 +76,11 @@ auto parser::constant_declaration() -> std::unique_ptr<statement> {
 		peek(), error_code::pe_missing_const_initialization
 	);
 
-	std::unique_ptr<expression> expr_{};
+	expression_id expr_{};
 	if (!match<token_type::right_brace>()) {
 		const auto &init_start{ peek() };
 		if (!match<token_type::right_brace>()) {
-			expr_ = expr();
+			expr_ = expr(prog);
 			consume(token_type::right_brace, "Missed '}' brace during variable initialization",
 				init_start, error_code::pe_broken_symmetry
 			);
@@ -88,116 +91,113 @@ auto parser::constant_declaration() -> std::unique_ptr<statement> {
 			);
 		}
 	} else {
-		expr_ = std::make_unique<expression::literal>(null_literal);
+		expr_ = prog.emplace<expression_type::literal>(null_literal);
 	}
 
 	match<token_type::semicolon>();
 
-	return std::make_unique<statement::constant>(identifier, std::move(expr_));
+	return prog.emplace<statement_type::constant>(identifier, expr_);
 }
 
-auto parser::stmt() -> std::unique_ptr<statement> {
+auto parser::stmt(program &prog) -> statement_id {
 	if (match<token_type::kw_if>()) {
-		return branch_stmt();
+		return branch_stmt(prog);
 	}
 #if defined(LOX_DEBUG)
 	if (match<token_type::kw_print>()) {
-		return make_stmt<statement::print>(&parser::expr);
+		return make_stmt<statement_type::print>(prog, &parser::expr);
 	}
 #endif // defined(LOX_DEBUG)
 	if (match<token_type::kw_while>()) {
-		return loop_stmt();
+		return loop_stmt(prog);
 	}
 	if (match<token_type::kw_for>()) {
-		return for_loop_stmt();
+		return for_loop_stmt(prog);
 	}
 	if (match<token_type::left_brace>()) {
-		return scope_stmt();
+		return scope_stmt(prog);
 	}
 
-	return make_stmt<statement::expression>(&parser::expr);
+	return make_stmt<statement_type::expression>(prog, &parser::expr);
 }
 
-auto parser::branch_stmt() -> std::unique_ptr<statement> {
+auto parser::branch_stmt(program &prog) -> statement_id {
 	using enum token_type;
 
 	consume(left_paren, "Expected '(' after 'if' statement", peek());
 
-	auto declaration{ storage_declaration() };
-	auto condition{ expr() };
+	auto declaration{ storage_declaration(prog) };
+	auto condition{ expr(prog) };
 
 	consume(right_paren, "Expected ')' after 'if' condition", peek(), error_code::pe_broken_symmetry);
 
-	const auto get_block{ [this] {
+	const auto get_block{ [this, &prog] {
 		consume(left_brace, "Branch requires '{' block", peek());
-		return scope_stmt();
+		return scope_stmt(prog);
 	} };
 
 	auto then_block{ get_block() };
-
-	auto branch{ std::make_unique<statement::branch>(
-		std::move(condition),
-		std::move(then_block),
-		match<kw_else>() ? get_block() : nullptr
+	auto branch{ prog.emplace<statement_type::branch>(
+		condition, then_block,
+		match<kw_else>() ? get_block() : statement_id{}
 	) };
 
-	if (declaration) {
-		return std::make_unique<statement::scope>(utils::make_pointers_vector<statement>(
-			std::move(declaration),
-			std::move(branch)
-		));
+	if (!std::empty(declaration)) {
+		return prog.emplace<statement_type::scope>(std::vector<statement_id>{ declaration, branch });
 	}
 
-	return std::move(branch);
+	return branch;
 }
 
-auto parser::loop_stmt() -> std::unique_ptr<statement> {
+auto parser::loop_stmt(program &prog) -> statement_id {
 	using enum token_type;
 
 	consume(left_paren, "Expected '(' after 'while' statement", peek());
 
-	auto declaration{ storage_declaration() };
-	auto condition{ expr() };
+	auto declaration{ storage_declaration(prog) };
+	auto condition{ expr(prog) };
 
 	consume(right_paren, "Expected ')' after 'while' condition", peek(), error_code::pe_broken_symmetry);
 
-	const auto get_block{ [this] {
+	const auto get_block{ [this, &prog] {
 		consume(left_brace, "'while' requires '{' block", peek());
-		return scope_stmt();
+		return scope_stmt(prog);
 	} };
 
-	return make_loop(std::move(declaration), std::move(condition), get_block());
+	return make_loop(prog, declaration, condition, get_block());
 }
 
-auto parser::for_loop_stmt() -> std::unique_ptr<statement> {
+auto parser::for_loop_stmt(program &prog) -> statement_id {
 	using enum token_type;
 
 	consume(left_paren, "Expected '(' after 'while' statement", peek());
 
-	auto declaration{ make_declaration_or_expression_stmt() };
-	auto condition{ match<semicolon>() ? std::make_unique<expression::literal>(true) : expr() };
+	auto declaration{ make_declaration_or_expression_stmt(prog) };
+	auto condition{ match<semicolon>() ? prog.emplace<expression_type::literal>(true) : expr(prog) };
 	consume(semicolon, "Expected ';' after 'for' condition", peek(),
 		error_code::pe_missing_end_of_statement
 	);
 
-	auto increment_expr{ match<right_paren>() ? nullptr : expr() };
+	auto increment_expr{ match<right_paren>() ? expression_id{} : expr(prog) };
 	consume(right_paren, "Expected ')' after 'while' condition", peek(), error_code::pe_broken_symmetry);
 
 	consume(left_brace, "'for' requires '{' block", peek());
 
-	auto body{ scope_stmt() };
-	if (increment_expr) {
-		body->statements.emplace_back(std::make_unique<statement::expression>(std::move(increment_expr)));
+	auto body{ scope_stmt(prog) };
+	if (!std::empty(increment_expr)) {
+		prog.get_statements<statement_type::scope>(body).statements.emplace_back(
+			prog.emplace<statement_type::expression>(increment_expr)
+		);
 	}
-	return make_loop(std::move(declaration), std::move(condition), std::move(body));
+	return make_loop(prog, declaration, condition, body);
 }
 
-auto parser::scope_stmt() -> std::unique_ptr<statement::scope> {
+auto parser::scope_stmt(program &prog) -> statement_id {
 	using enum token_type;
 
-	std::vector<std::unique_ptr<statement>> statements{};
+	std::vector<statement_id> statements{};
 	while (!at_end() && !utils::ct::any_from(right_brace, peek().type, previous().type)) {
-		statements.emplace_back(declaration());
+		statements.emplace_back(declaration(prog));
 	}
 	if (const auto &prev{ previous() }; prev.type == right_brace) {
 		make_error("It seems like there should be ';' before '}'",
@@ -208,64 +208,61 @@ auto parser::scope_stmt() -> std::unique_ptr<statement::scope> {
 			error_code::pe_broken_symmetry
 		);
 	}
-	return std::make_unique<statement::scope>(std::move(statements));
+	return prog.emplace<statement_type::scope>(std::move(statements));
 }
 
-auto parser::make_declaration_or_expression_stmt() -> std::unique_ptr<statement> {
+auto parser::make_declaration_or_expression_stmt(program &prog) -> statement_id {
 	if (match<token_type::semicolon>()) {
-		return nullptr;
+		return statement_id{};
 	}
 
-	if (auto declaration{ storage_declaration() }; declaration) {
-		return std::move(declaration);
+	if (auto declaration{ storage_declaration(prog) }; !std::empty(declaration)) {
+		return declaration;
 	}
 
-	return make_stmt<statement::expression>(&parser::expr);
+	return make_stmt<statement_type::expression>(prog, &parser::expr);
 }
 
-auto parser::make_loop(
-	std::unique_ptr<statement> declaration,
-	std::unique_ptr<expression> condition,
-	std::unique_ptr<statement> body
-) -> std::unique_ptr<statement> {
-	auto loop{ std::make_unique<statement::loop>(std::move(condition), std::move(body)) };
-	if (declaration) {
-		return std::make_unique<statement::scope>(utils::make_pointers_vector<statement>(
-			std::move(declaration),
-			std::move(loop)
-		));
+auto parser::make_loop(program &prog,
+	statement_id declaration,
+	expression_id condition,
+	statement_id body
+) -> statement_id {
+	auto loop{ prog.emplace<statement_type::loop>(condition, body) };
+	if (!std::empty(declaration)) {
+		return prog.emplace<statement_type::scope>(std::vector<statement_id>{ declaration, loop });
 	}
 
 	return std::move(loop);
 }
 
-auto parser::expr() -> std::unique_ptr<expression> {
-	return incdec();
+auto parser::expr(program &prog) -> expression_id {
+	return incdec(prog);
 }
 
-auto parser::incdec() -> std::unique_ptr<expression> {
+auto parser::incdec(program &prog) -> expression_id {
 	using enum token_type;
 
 	if (match<increment, decrement>()) {
 		const auto &op{ previous() };
-		auto identifier{ logical_or() };
-		if (identifier->type() != expression::tag::identifier) {
+		auto identifier{ logical_or(prog) };
+		if (identifier.type != expression_type::identifier) {
 			make_error(std::format("Invalid {} target.", token_name(op.type)),
 				lox::error_code::pe_lvalue_assignment, op
 			);
 			return std::move(identifier);
 		}
-		const auto &name{ static_cast<const expression::identifier *>(identifier.get())->name };
-		return std::make_unique<expression::incdec>(name, op);
+		const auto &name{ prog.get_expressions<expression_type::identifier>(identifier).name };
+		return prog.emplace<expression_type::incdec>(name, op);
 	}
 
-	return assignment();
+	return assignment(prog);
 }
 
-auto parser::assignment() -> std::unique_ptr<expression> {
+auto parser::assignment(program &prog) -> expression_id {
 	using enum token_type;
 
-	auto expr_{ logical_or() };
+	auto expr_{ logical_or(prog) };
 
 	static constexpr auto convert_to_binary_op{ [] (const auto type) {
 		switch (type) {
@@ -282,74 +279,74 @@ auto parser::assignment() -> std::unique_ptr<expression> {
 
 	if (match<equal, plus_equal, minus_equal, star_equal, slash_equal>()) {
 		const auto &equals_token{ previous() };
-		auto value{ assignment() };
-		if (expr_->type() != expression::tag::identifier) {
+		auto value{ assignment(prog) };
+		if (expr_.type != expression_type::identifier) {
 			make_error("Invalid assignment target.", lox::error_code::pe_lvalue_assignment, equals_token);
-			return std::move(expr_);
+			return expr_;
 		}
 
-		const auto &name{ static_cast<const expression::identifier *>(expr_.get())->name };
+		const auto &name{ prog.get_expressions<expression_type::identifier>(expr_).name };
 		const auto operation_type{ convert_to_binary_op(equals_token.type) };
 		if (operation_type == equal) {
-			return std::make_unique<expression::assignment>(name, std::move(value));
+			return prog.emplace<expression_type::assignment>(name, value);
 		}
 
-		return std::make_unique<expression::assignment>(name,
-			std::make_unique<expression::binary>(token{
+		return prog.emplace<expression_type::assignment>(name,
+			prog.emplace<expression_type::binary>(token{
 				.line = equals_token.line,
 				.position = equals_token.position,
 				.type = operation_type
-			}, std::move(expr_), std::move(value))
+			}, expr_, value)
 		);
 	}
 
 	return expr_;
 }
 
-auto parser::logical_or() -> std::unique_ptr<expression> {
-	return iterate_if<expression::logical, token_type::kw_or>(&parser::logical_and);
+auto parser::logical_or(program &prog) -> expression_id {
+	return iterate_if<expression_type::logical, token_type::kw_or>(prog, &parser::logical_and);
 }
 
-auto parser::logical_and() -> std::unique_ptr<expression> {
-	return iterate_if<expression::logical, token_type::kw_and>(&parser::equality);
+auto parser::logical_and(program &prog) -> expression_id {
+	return iterate_if<expression_type::logical, token_type::kw_and>(prog, &parser::equality);
 }
 
-auto parser::equality() -> std::unique_ptr<expression> {
+auto parser::equality(program &prog) -> expression_id {
 	using enum token_type;
-	return iterate_through<bang_equal, equal_equal>(&parser::comparison);
+	return iterate_through<bang_equal, equal_equal>(prog, &parser::comparison);
 }
 
-auto parser::comparison() -> std::unique_ptr<expression> {
+auto parser::comparison(program &prog) -> expression_id {
 	using enum token_type;
-	return iterate_through<greater, greater_equal, less, less_equal>(&parser::term);
+	return iterate_through<greater, greater_equal, less, less_equal>(prog, &parser::term);
 }
 
-auto parser::term() -> std::unique_ptr<expression> {
+auto parser::term(program &prog) -> expression_id {
 	using enum token_type;
-	return iterate_through<minus, plus>(&parser::factor);
+	return iterate_through<minus, plus>(prog, &parser::factor);
 }
 
-auto parser::factor() -> std::unique_ptr<expression> {
+auto parser::factor(program &prog) -> expression_id {
 	using enum token_type;
-	return iterate_through<slash, star>(&parser::unary);
+	return iterate_through<slash, star>(prog, &parser::unary);
 }
 
-auto parser::unary() -> std::unique_ptr<expression> {
+auto parser::unary(program &prog) -> expression_id {
 	if (match<token_type::bang, token_type::minus>()) {
 		const auto &op{ previous() };
-		return std::make_unique<expression::unary>(op, unary());
+		return prog.emplace<expression_type::unary>(op, unary(prog));
 	}
-	return primary();
+	return primary(prog);
 }
 
-auto parser::primary() -> std::unique_ptr<expression> {
+auto parser::primary(program &prog) -> expression_id {
 	using enum token_type;
 
 	if (match<string, number, boolean, null>()) {
 		const auto &token{ previous() };
 		const auto id{ token.literal_id };
 		if (id < std::size(ctx.literals)) {
-			return std::make_unique<expression::literal>(ctx.literals.at(id));
+			return prog.emplace<expression_type::literal>(ctx.literals.at(id));
 		}
 		throw make_error(
 			std::format(R"(Missing literal #{} of the "{}" token!)",
@@ -360,15 +357,15 @@ auto parser::primary() -> std::unique_ptr<expression> {
 	}
 
 	if (match<identifier>()) {
-		return std::make_unique<expression::identifier>(previous());
+		return prog.emplace<expression_type::identifier>(previous());
 	}
 
 	if (match<left_paren>()) {
 		const auto &token{ peek() };
-		auto expr_{ expr() };
+		auto expr_{ expr(prog) };
 
 		consume(right_paren, "Expected ')' after expression", token, error_code::pe_broken_symmetry);
-		return std::make_unique<expression::grouping>(std::move(expr_));
+		return prog.emplace<expression_type::grouping>(expr_);
 	}
 
 	throw make_error("Unexpected token!", error_code::pe_unexpected_token, peek());

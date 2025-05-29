@@ -3,9 +3,9 @@
 #include <concepts>
 #include <type_traits>
 
-#include "lox/program.hpp"
 #include "lox/context.hpp"
 #include "lox/error_handler.hpp"
+#include "lox/program.hpp"
 
 namespace lox {
 
@@ -24,57 +24,56 @@ private:
 	error_handler &errout;
 	size_t m_current{};
 
-	auto declaration() -> std::unique_ptr<statement>;
-	auto storage_declaration() -> std::unique_ptr<statement>;
-	auto variable_declaration() -> std::unique_ptr<statement>;
-	auto constant_declaration() -> std::unique_ptr<statement>;
+	auto declaration(program &out) -> statement_id;
+	auto storage_declaration(program &out) -> statement_id;
+	auto variable_declaration(program &out) -> statement_id;
+	auto constant_declaration(program &out) -> statement_id;
 
-	auto stmt() -> std::unique_ptr<statement>;
-	auto branch_stmt() -> std::unique_ptr<statement>;
-	auto loop_stmt() -> std::unique_ptr<statement>;
-	auto for_loop_stmt() -> std::unique_ptr<statement>;
-	auto scope_stmt() -> std::unique_ptr<statement::scope>;
+	auto stmt(program &out) -> statement_id;
+	auto branch_stmt(program &out) -> statement_id;
+	auto loop_stmt(program &out) -> statement_id;
+	auto for_loop_stmt(program &out) -> statement_id;
+	auto scope_stmt(program &out) -> statement_id;
 
-	template<std::derived_from<statement> Type>
-	auto make_stmt(auto content_gen) -> std::unique_ptr<statement> {
-		auto content{ std::invoke(content_gen, this) };
+	template<statement_type Type>
+	auto make_stmt(program &out, auto content_gen) -> statement_id {
+		auto content{ std::invoke(content_gen, this, out) };
 		consume(token_type::semicolon, "Expected ';' after statement", previous());
-		return std::make_unique<Type>(std::move(content));
+		return out.emplace<Type>(content);
 	}
 
-	auto make_declaration_or_expression_stmt() -> std::unique_ptr<statement>;
+	auto make_declaration_or_expression_stmt(program &out) -> statement_id;
 	static auto make_loop(
-		std::unique_ptr<statement> declaration,
-		std::unique_ptr<expression> condition,
-		std::unique_ptr<statement> body
-	) -> std::unique_ptr<statement>;
+		program &out,
+		statement_id declaration,
+		expression_id condition,
+		statement_id body
+	) -> statement_id;
 
 	template<token_type ...Types>
-	auto iterate_through(auto next) -> std::unique_ptr<expression> {
-		auto expr_{ std::invoke(next, this) };
+	auto iterate_through(program &out, auto next) -> expression_id {
+		auto expr_{ std::invoke(next, this, out) };
 
 		while (match<Types...>()) {
 			const auto &op{ previous() };
-			expr_ = std::make_unique<expression::binary>(
-				op, std::move(expr_), std::invoke(next, this)
+			expr_ = out.emplace<expression_type::binary>(
+				op, expr_, std::invoke(next, this, out)
 			);
 		}
 
-		return std::move(expr_);
+		return expr_;
 	}
 
-	template<std::derived_from<expression> Expr, token_type ...Types>
-	auto iterate_if(auto next) -> std::unique_ptr<expression> {
-		auto expr_{ std::invoke(next, this) };
+	template<expression_type Expr, token_type ...Types>
+	auto iterate_if(program &out, auto next) -> expression_id {
+		auto expr_{ std::invoke(next, this, out) };
 
 		if (match<Types...>()) {
 			const auto &op{ previous() };
-			expr_ = std::make_unique<Expr>(
-				op, std::move(expr_), std::invoke(next, this)
-			);
+			expr_ = out.emplace<Expr>(op, expr_, std::invoke(next, this, out));
 		}
 
-		return std::move(expr_);
+		return expr_;
 	}
 
 	template<token_type ...Types>
@@ -88,17 +87,17 @@ private:
 		return false;
 	}
 
-	auto expr() -> std::unique_ptr<expression>;
-	auto incdec() -> std::unique_ptr<expression>;
-	auto assignment() -> std::unique_ptr<expression>;
-	auto logical_or() -> std::unique_ptr<expression>;
-	auto logical_and() -> std::unique_ptr<expression>;
-	auto equality() -> std::unique_ptr<expression>;
-	auto comparison() -> std::unique_ptr<expression>;
-	auto term() -> std::unique_ptr<expression>;
-	auto factor() -> std::unique_ptr<expression>;
-	auto unary() -> std::unique_ptr<expression>;
-	auto primary() -> std::unique_ptr<expression>;
+	auto expr(program &out) -> expression_id;
+	auto incdec(program &out) -> expression_id;
+	auto assignment(program &out) -> expression_id;
+	auto logical_or(program &out) -> expression_id;
+	auto logical_and(program &out) -> expression_id;
+	auto equality(program &out) -> expression_id;
+	auto comparison(program &out) -> expression_id;
+	auto term(program &out) -> expression_id;
+	auto factor(program &out) -> expression_id;
+	auto unary(program &out) -> expression_id;
+	auto primary(program &out) -> expression_id;
 
 	void synchronize();
 

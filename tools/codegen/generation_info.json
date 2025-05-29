@@ -1,0 +1,35 @@
+{
+	"expression_class": "expression",
+	"expressions": {
+		"unary"     : "token op, expression_id expr",
+		"incdec"    : "token name, token op",
+		"assignment": "token name, expression_id value",
+		"binary"    : "token op, expression_id left, expression_id right",
+		"grouping"  : "expression_id expr",
+		"literal"   : "lox::literal value",
+		"logical"   : "token op, expression_id left, expression_id right",
+		"identifier": "token name"
+	},
+	"expression_includes": [
+		"\"lox/id.hpp\"",
+		"\"lox/token.hpp\"",
+		"\"lox/literal.hpp\""
+	],
+
+
+	"statement_class": "statement",
+	"statements": {
+		"scope"          : "std::vector<statement_id> statements",
+		"expression"     : "expression_id expr",
+		"branch"         : "expression_id condition, statement_id then_branch, statement_id else_branch",
+		"variable"       : "token identifier, expression_id initializer",
+		"constant"       : "token identifier, expression_id initializer",
+		"loop"           : "expression_id condition, statement_id body",
+		"LOX_DEBUG!print": "expression_id expr"
+	},
+	"statement_includes": [
+		"<vector>",
+		"\"lox/token.hpp\"",
+		"\"lox/literal.hpp\""
+	]
+}

@@ -34,7 +34,8 @@ endif()
 
 # >-------------------------| CODE GENERATION |-------------------------< #
 
-lox_ast_generate(${lox_code_root})
+lox_generate_ast(${lox_code_root})
+lox_generate_program_class(${lox_code_root})
 
 include(GenerateExportHeader)
 generate_export_header(${lox_target_name}

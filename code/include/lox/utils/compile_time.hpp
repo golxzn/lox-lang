@@ -33,6 +33,9 @@ constexpr auto are_base_of_v{ are_base_of<T, Ts...>::value };
 	return ((t == ts) & ...);
 }
 
+template<class T>
+concept enumeration = std::is_enum_v<T>;
+
 template<auto ...Values>
 	requires are_same_v<decltype(Values)...> && (std::is_enum_v<decltype(Values)> && ...)
 [[nodiscard]] constexpr bool any_from(const auto value) noexcept {

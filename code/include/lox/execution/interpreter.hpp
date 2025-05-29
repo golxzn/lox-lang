@@ -17,47 +17,54 @@ enum class status : uint8_t {
 };
 
 
-class LOX_EXPORT syntax_tree_interpreter final
-	: public expression::visitor_interface
-	, public statement::visitor_interface {
+class LOX_EXPORT interpreter final
+	: public expression_visitor_interface<literal>
+	, public statement_visitor_interface<void> {
 public:
 	struct execution_error : public std::runtime_error {
 		using std::runtime_error::runtime_error;
+		status reason{ status::runtime_error };
 	};
 
-	syntax_tree_interpreter(const lexeme_database &lexemes, error_handler &handler) noexcept;
-	~syntax_tree_interpreter() override = default;
+	interpreter(
+		const program &prog,
+		const lexeme_database &lexemes,
+		error_handler &handler
+	) noexcept;
 
-	[[nodiscard]] auto run(program &prog) -> status;
-	[[nodiscard]] auto evaluate(expression &expr) -> literal;
+	~interpreter() override = default;
+
+	[[nodiscard]] auto run() -> status;
 	[[nodiscard]] auto runtime_error() const noexcept -> bool { return got_runtime_error; }
 
-	void execute(statement &stmt);
+	void execute(statement_id stmt);
+	[[nodiscard]] auto evaluate(expression_id expr) -> literal;
+
 
 #pragma region expression::visitor_interface methods
 
-	void accept(const expression::unary &unary) override;
-	void accept(const expression::incdec &incdec) override;
-	void accept(const expression::assignment &assign) override;
-	void accept(const expression::binary &binary) override;
-	void accept(const expression::grouping &group) override;
-	void accept(const expression::literal &value) override;
-	void accept(const expression::logical &logic) override;
-	void accept(const expression::identifier &id) override;
+	[[nodiscard]] auto accept(const expression_unary &unary) -> literal override;
+	[[nodiscard]] auto accept(const expression_incdec &incdec) -> literal override;
+	[[nodiscard]] auto accept(const expression_assignment &assign) -> literal override;
+	[[nodiscard]] auto accept(const expression_binary &binary) -> literal override;
+	[[nodiscard]] auto accept(const expression_grouping &group) -> literal override;
+	[[nodiscard]] auto accept(const expression_literal &value) -> literal override;
+	[[nodiscard]] auto accept(const expression_logical &logic) -> literal override;
+	[[nodiscard]] auto accept(const expression_identifier &id) -> literal override;
 
 #pragma endregion expression::visitor_interface methods
 
 #pragma region statement::visitor_interface methods
 
-	void accept(const statement::scope &scope) override;
-	void accept(const statement::expression &expr) override;
-	void accept(const statement::branch &branch) override;
-	void accept(const statement::variable &var) override;
-	void accept(const statement::constant &con) override;
-	void accept(const statement::loop &loop) override;
+	void accept(const statement_scope &scope) override;
+	void accept(const statement_expression &expr) override;
+	void accept(const statement_branch &branch) override;
+	void accept(const statement_variable &var) override;
+	void accept(const statement_constant &con) override;
+	void accept(const statement_loop &loop) override;
 
 #if defined(LOX_DEBUG)
-	void accept(const statement::print &print) override;
+	void accept(const statement_print &print) override;
 #endif // defined(LOX_DEBUG)
 
 #pragma endregion statement::visitor_interface methods
@@ -66,11 +73,12 @@ public:
 private:
 	environment m_env{};
 	literal m_output{};
+	std::reference_wrapper<const program> prog;
 	std::reference_wrapper<const lexeme_database> lexemes;
 	std::reference_wrapper<error_handler> errout;
 	bool got_runtime_error{ false };
 
-	void execute_block(const std::vector<std::unique_ptr<statement>> &statements);
+	void execute_block(const program::statement_list &statements);
 	void safe_assign(const token &tok, literal value);
 
 	auto error_no_suitable(const token &op, const literal &value) const -> execution_error;

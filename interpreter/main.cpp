@@ -9,10 +9,8 @@
 #include "lox/literal.hpp"
 #include "lox/scanner.hpp"
 #include "lox/parser.hpp"
-#include "lox/execution/syntax_tree_interpreter.hpp"
+#include "lox/execution/interpreter.hpp"
 #include "lox/utils/exit_codes.hpp"
-#include "lox/utils/ast_printer.hpp"
-#include "lox/utils/rpn_printer.hpp"
 
 void print_literal(const lox::literal &lit) {
 	std::printf(" %s", std::data(lox::to_string(lit)));
@@ -56,9 +54,9 @@ auto evaluate(const std::string_view file_path, const std::string_view script) -
 
 	// std::printf("\n----------------------- EXECUTION -----------------------\n\n");
 
-	lox::execution::syntax_tree_interpreter interpreter{ ctx.lexemes, errout };
+	lox::execution::interpreter interpreter{ program, ctx.lexemes, errout };
 
-	if (const auto status{ interpreter.run(program) }; status != lox::execution::status::ok || !std::empty(errout)) {
+	if (const auto status{ interpreter.run() }; status != lox::execution::status::ok || !std::empty(errout)) {
 		std::printf("Runtime Errors:\n");
 		errout.export_records([](std::string_view err) {
 			std::printf("%.*s\n", static_cast<int32_t>(std::size(err)), std::data(err));

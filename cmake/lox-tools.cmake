@@ -38,12 +38,22 @@ function(lox_query_host_info output_variable)
 
 endfunction()
 
-function(lox_ast_generate directory)
+function(lox_generate script directory)
 	find_package(Python3 REQUIRED)
-	set(_script ${root}/tools/codegen/generate_ast.py)
+	set(_script ${root}/tools/codegen/${script}.py)
+	set(_config ${root}/tools/codegen/generation_info.json)
 	execute_process(
-		COMMAND ${Python3_EXECUTABLE} ${_script} --output ${directory}
+		COMMAND ${Python3_EXECUTABLE} ${_script} --output ${directory} --config ${_config}
 	)
+	unset(_config)
 	unset(_script)
+endfunction()
+
+function(lox_generate_ast directory)
+	lox_generate("generate_ast" ${directory})
+endfunction()
+
+function(lox_generate_program_class directory)
+	lox_generate("generate_program_class" ${directory})
 endfunction()
 
