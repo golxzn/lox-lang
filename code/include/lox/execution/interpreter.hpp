@@ -27,6 +27,7 @@ public:
 	};
 
 	interpreter(
+		environment env,
 		const program &prog,
 		const lexeme_database &lexemes,
 		error_handler &handler
@@ -47,6 +48,7 @@ public:
 	[[nodiscard]] auto accept(const expression_incdec &incdec) -> literal override;
 	[[nodiscard]] auto accept(const expression_assignment &assign) -> literal override;
 	[[nodiscard]] auto accept(const expression_binary &binary) -> literal override;
+	[[nodiscard]] auto accept(const expression_call &call) -> literal override;
 	[[nodiscard]] auto accept(const expression_grouping &group) -> literal override;
 	[[nodiscard]] auto accept(const expression_literal &value) -> literal override;
 	[[nodiscard]] auto accept(const expression_logical &logic) -> literal override;
@@ -72,7 +74,6 @@ public:
 
 private:
 	environment m_env{};
-	literal m_output{};
 	std::reference_wrapper<const program> prog;
 	std::reference_wrapper<const lexeme_database> lexemes;
 	std::reference_wrapper<error_handler> errout;

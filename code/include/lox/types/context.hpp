@@ -1,7 +1,7 @@
 #pragma once
 
-#include "lox/token.hpp"
-#include "lox/literal.hpp"
+#include "lox/types/token.hpp"
+#include "lox/types/literal.hpp"
 #include "lox/lexeme_database.hpp"
 
 namespace lox {

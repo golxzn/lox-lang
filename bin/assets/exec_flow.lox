@@ -1,4 +1,6 @@
 
+const start{ time() };
+
 const lhv{ 10 };
 const rhv{ 5 };
 
@@ -41,3 +43,6 @@ for (var i{ 0 }; i < 5; ++i) {
 }
 
 var lol{ 10 };
+
+const end{ time() };
+println("Execution time: ", end - start, " ms");

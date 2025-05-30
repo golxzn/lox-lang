@@ -6,8 +6,8 @@
 
 #include "lox/scanner.hpp"
 
-#include "lox/token.hpp"
-#include "lox/literal.hpp"
+#include "lox/types/token.hpp"
+#include "lox/types/literal.hpp"
 #include "lox/utils/strhash.hpp"
 #include "lox/utils/strutils.hpp"
 

@@ -1,7 +1,7 @@
 #include <fast_float/fast_float.h>
 #include <fast_float/parse_number.h>
 
-#include "lox/literal.hpp"
+#include "lox/types/literal.hpp"
 #include "lox/utils/strhash.hpp"
 #include "lox/utils/strutils.hpp"
 

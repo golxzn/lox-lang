@@ -4,9 +4,7 @@
 #include <unordered_map>
 #include <memory_resource>
 
-#include "lox/types.hpp"
-#include "lox/token.hpp"
-#include "lox/literal.hpp"
+#include "lox/types/function.hpp"
 
 namespace lox::execution {
 
@@ -31,7 +29,7 @@ constexpr struct current_scope_type final {} current_scope{};
 
 } // namespace search_range
 
-class environment {
+class LOX_EXPORT environment {
 public:
 	void push_scope();
 	void pop_scope();
@@ -47,6 +45,12 @@ public:
 	enum class assignment_status : uint8_t { ok, not_found, constant };
 	[[nodiscard]] auto assign(lexeme_id id, lox::literal value) noexcept -> assignment_status;
 
+	[[nodiscard]] auto has_function(lexeme_id id) const noexcept -> bool;
+	[[nodiscard]] auto get_function(lexeme_id id) const -> function;
+	[[nodiscard]] auto register_function(lexeme_id id, function fun) -> bool;
+
+	[[nodiscard]] auto function_at(size_t id) const noexcept -> std::optional<function>;
+
 private:
 	enum class mutability : uint8_t {
 		constant,
@@ -60,6 +64,7 @@ private:
 
 	std::vector<lexeme_id> m_keys;
 	std::vector<value_container> m_values;
+	std::vector<function> m_functions;
 	std::vector<size_t> m_scopes;
 
 	auto index_of(lexeme_id id) const noexcept -> int64_t;

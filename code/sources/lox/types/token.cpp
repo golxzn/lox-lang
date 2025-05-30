@@ -1,6 +1,6 @@
 #include <cstdio>
 
-#include "lox/token.hpp"
+#include "lox/types/token.hpp"
 #include "lox/utils/strhash.hpp"
 #include "lox/utils/strutils.hpp"
 

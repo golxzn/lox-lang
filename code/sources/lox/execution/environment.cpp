@@ -61,6 +61,31 @@ auto environment::assign(lexeme_id id, lox::literal value) noexcept -> assignmen
 	return assignment_status::constant;
 }
 
+auto environment::has_function(lexeme_id address) const noexcept -> bool {
+	if (!contains(address, search_range::globally)) return false;
+
+	if (const auto id{ look_up(address).as<int64_t>() }; id) {
+		return *id < std::size(m_functions);
+	}
+
+	return false;
+}
+
+auto environment::get_function(lexeme_id address) const -> function {
+	return m_functions.at(std::get<int64_t>(look_up(address)));
+}
+
+auto environment::register_function(lexeme_id address, function fun) -> bool {
+	const literal id{ static_cast<int64_t>(std::size(m_functions)) };
+	m_functions.emplace_back(fun);
+	return define_constant(address, id);
+}
+
+auto environment::function_at(size_t id) const noexcept -> std::optional<function> {
+	if (id >= std::size(m_functions)) return std::nullopt;
+	return m_functions[id];
+}
+
 auto environment::index_of(lexeme_id id) const noexcept -> int64_t {
 	int64_t index{ static_cast<int64_t>(std::size(m_keys) - 1ull) };
 	for (; index >= 0ll && id != m_keys[index]; --index) { }

@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include "lox/export.hpp"
+#include "lox/aliases.hpp"
 
 namespace lox {
 

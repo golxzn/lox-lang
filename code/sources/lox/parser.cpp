@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "lox/parser.hpp"
+#include "lox/constants.hpp"
 #include "lox/utils/vecutils.hpp"
 #include "lox/utils/compile_time.hpp"
 
@@ -336,7 +337,44 @@ auto parser::unary(program &prog) -> expression_id {
 		const auto &op{ previous() };
 		return prog.emplace<expression_type::unary>(op, unary(prog));
 	}
-	return primary(prog);
+	return call(prog);
+}
+
+auto parser::call(program &prog) -> expression_id {
+	auto expr_{ primary(prog) };
+
+	// This infinity loop is here for support object notations later
+	while (true) {
+		if (match<token_type::left_paren>()) {
+			expr_ = call_finish(prog, expr_);
+		} else {
+			break;
+		}
+	}
+
+	return expr_;
+}
+
+auto parser::call_finish(program &prog, expression_id caller) -> expression_id {
+	std::vector<expression_id> arguments{};
+	if (!check(token_type::right_paren)) {
+		bool many_args_logged{ false };
+		do {
+			if (!many_args_logged && std::size(arguments) > constants::max_call_stack_depth) {
+				make_error("Too many arguments for this call!",
+					error_code::pe_too_many_arguments, peek()
+				);
+				many_args_logged = true;
+			}
+
+			arguments.emplace_back(expr(prog));
+		} while (match<token_type::comma>());
+	}
+
+	const auto &paren{ consume(token_type::right_paren,
+		"Expected ')' after arguments.", previous(), error_code::pe_broken_symmetry
+	) };
+	return prog.emplace<expression_type::call>(paren, caller, std::move(arguments));
 }
 
 auto parser::primary(program &prog) -> expression_id {

@@ -5,7 +5,7 @@
 #include <optional>
 #include <string_view>
 
-#include "lox/context.hpp"
+#include "lox/types/context.hpp"
 #include "lox/error_handler.hpp"
 
 namespace lox {

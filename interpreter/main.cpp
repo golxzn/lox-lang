@@ -5,8 +5,7 @@
 #include <algorithm>
 #include <iostream>
 
-#include "lox/token.hpp"
-#include "lox/literal.hpp"
+#include "lox/types/native_functions.hpp"
 #include "lox/scanner.hpp"
 #include "lox/parser.hpp"
 #include "lox/execution/interpreter.hpp"
@@ -22,7 +21,7 @@ auto evaluate(const std::string_view file_path, const std::string_view script) -
 	lox::scanner scanner{ script, errout };
 
 	// std::printf("\n------------------------ SCANNING -----------------------\n\n");
-	const auto ctx{ scanner.scan() };
+	auto ctx{ scanner.scan() };
 
 	if (!std::empty(errout)) {
 		std::printf("Scan Errors:\n");
@@ -54,7 +53,10 @@ auto evaluate(const std::string_view file_path, const std::string_view script) -
 
 	// std::printf("\n----------------------- EXECUTION -----------------------\n\n");
 
-	lox::execution::interpreter interpreter{ program, ctx.lexemes, errout };
+	lox::execution::environment env{};
+	lox::native::add_native_functions(ctx.lexemes, env);
+
+	lox::execution::interpreter interpreter{ std::move(env), program, ctx.lexemes, errout };
 
 	if (const auto status{ interpreter.run() }; status != lox::execution::status::ok || !std::empty(errout)) {
 		std::printf("Runtime Errors:\n");

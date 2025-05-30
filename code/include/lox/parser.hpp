@@ -3,7 +3,7 @@
 #include <concepts>
 #include <type_traits>
 
-#include "lox/context.hpp"
+#include "lox/types/context.hpp"
 #include "lox/error_handler.hpp"
 #include "lox/program.hpp"
 
@@ -97,6 +97,8 @@ private:
 	auto term(program &out) -> expression_id;
 	auto factor(program &out) -> expression_id;
 	auto unary(program &out) -> expression_id;
+	auto call(program &out) -> expression_id;
+	auto call_finish(program &out, expression_id caller) -> expression_id;
 	auto primary(program &out) -> expression_id;
 
 	void synchronize();

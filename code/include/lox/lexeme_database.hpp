@@ -7,7 +7,7 @@
 #include <string_view>
 #include <unordered_map>
 
-#include "lox/types.hpp"
+#include "lox/aliases.hpp"
 #include "lox/export.hpp"
 
 namespace lox {

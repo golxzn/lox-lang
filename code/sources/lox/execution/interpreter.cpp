@@ -1,6 +1,7 @@
 #include <cmath>
 #include <limits>
 #include <format>
+#include <algorithm>
 #include <functional>
 
 #if defined(LOX_DEBUG)
@@ -129,10 +130,11 @@ struct operation<token_type::plus> {
 
 
 interpreter::interpreter(
+	environment env,
 	const program &prog,
 	const lexeme_database &lexemes,
 	error_handler &handler
-) noexcept : prog{ prog }, lexemes{ lexemes }, errout{ handler } {}
+) noexcept : m_env{ std::move(env) }, prog{ prog }, lexemes{ lexemes }, errout{ handler } {}
 
 auto interpreter::run() -> status try {
 	for (const auto &stmt : prog.get()) {
@@ -182,6 +184,36 @@ auto interpreter::accept(const expression_unary &unary) -> literal {
 	}
 
 	return null_literal;
+}
+
+auto interpreter::accept(const expression_call &call) -> literal {
+	const auto caller_address{ evaluate(call.caller) };
+	if (!caller_address.is(literal_type::integral)) {
+		/// @todo info
+		throw error(error_code::ee_invalid_callable, "Invalid callable expression", call.paren);
+	}
+
+	auto function{ m_env.function_at(std::get<int64_t>(caller_address)) };
+	if (!function.has_value()) {
+		throw error(error_code::ee_callable_not_found, "Cannot find function", call.paren);
+	}
+
+	if (!function->enough_arguments_count(std::size(call.args))) {
+		const auto arity{ function->arity() };
+		throw error(error_code::ee_invalid_arguments_cound,
+			std::format("Invalid count of arguments. Expected {}, but got {}",
+				(arity.has_value() ? std::to_string(*arity) : "variadic amount"), std::size(call.args)
+			),
+			call.paren
+		);
+	}
+
+	std::vector<literal> params(std::size(call.args));
+	for (size_t i{}; i < std::size(params); ++i) {
+		params[i] = evaluate(call.args[i]);
+	}
+
+	return function->call(this, std::move(params));
 }
 
 auto interpreter::accept(const expression_incdec &incdec) -> literal {
@@ -317,7 +349,6 @@ auto interpreter::accept(const expression_logical &logic) -> literal {
 auto interpreter::accept(const expression_identifier &id) -> literal {
 	if (m_env.contains(id.name.lexeme_id, execution::search_range::globally)) {
 		return m_env.look_up(id.name.lexeme_id);
-		return null_literal;
 	}
 
 	error(error_code::ee_undefined_identifier, std::format(
@@ -336,7 +367,7 @@ void interpreter::accept(const statement_scope &scope) {
 
 void interpreter::accept(const statement_expression &expr) {
 	if (!std::empty(expr.expr)) {
-		m_output = evaluate(expr.expr);
+		evaluate(expr.expr);
 	} else {
 		error(error_code::ee_missing_expression, "");
 	}
@@ -408,8 +439,7 @@ void interpreter::accept(const statement_loop &loop) {
 
 void interpreter::accept(const statement_print &print) {
 	if (!std::empty(print.expr)) {
-		m_output = evaluate(print.expr);
-		std::fprintf(stdout, "%s\n", std::data(lox::to_string(m_output)));
+		std::fprintf(stdout, "%s\n", std::data(lox::to_string(evaluate(print.expr))));
 	} else {
 		error(error_code::ee_missing_expression, "");
 	}

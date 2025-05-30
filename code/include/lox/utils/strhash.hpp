@@ -5,7 +5,7 @@
 #include <type_traits>
 #include <string_view>
 
-#include "lox/types.hpp"
+#include "lox/aliases.hpp"
 
 namespace lox::utils {
 

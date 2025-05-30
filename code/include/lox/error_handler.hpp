@@ -26,6 +26,7 @@ enum class error_code : uint32_t {
 	pe_missing_literal,
 	pe_missing_const_initialization,
 	pe_lvalue_assignment,
+	pe_too_many_arguments,
 	parser_error_end = 199,
 
 	evaluation_error_begin,
@@ -36,6 +37,9 @@ enum class error_code : uint32_t {
 	ee_identifier_already_exists,
 	ee_constant_assignment,
 	ee_condition_is_not_logical,
+	ee_invalid_callable,
+	ee_callable_not_found,
+	ee_invalid_arguments_cound,
 	evaluation_error_end = 299,
 };
 
