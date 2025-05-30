@@ -39,10 +39,12 @@ term          -> factor ( ( "+" | "-" ) factor )*;
 factor        -> unary ( ( "*" | "/" ) unary )*;
 
 unary         -> ( "!" | "-" | "+" ) unary | primary;
+call          -> primary ( arguments? )* ;
 primary       -> "true" | "false" | "null"
                | NUMBER | STRING | IDENTIFIER
                | "(" expression ")";
 
+arguments     -> expression ( "," expression )* ;
 
 NUMBER        -> DIGIT+ ( "." DIGIT+ )? ;
 STRING        -> "\"" <any char except "\"">* "\"" ;
