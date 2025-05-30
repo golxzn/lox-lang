@@ -1,16 +1,19 @@
 program       -> declaration* EOF;
 
-declaration   -> storage_decl
+declaration   -> function_decl
+               | storage_decl
                | statement;
 
+function_decl -> "fun" IDENTIFIER "(" parameters? ")" block ;
+
 storage_decl  -> constant_decl
-               | variable_decl
+               | variable_decl;
 
-constant_decl -> "const" IDENTIFIER (":" TYPE)* "{" expression "}" ";"
-              -> "const" IDENTIFIER ":" TYPE "{" expression* "}" ";";
+constant_decl -> "const" object_decl ";" ;
+variable_decl -> "var" object_decl ";" ;
 
-variable_decl -> "var" IDENTIFIER (":" TYPE)* "{" expression "}" ";"
-              -> "var" IDENTIFIER ":" TYPE "{" expression* "}" ";";
+object_decl   -> IDENTIFIER (":" TYPE)* "{" expression "}"
+               | IDENTIFIER ":" TYPE "{" expression* "}" ;
 
 statement     -> branch_stmt
                | print_stmt // DEBUG BUILD ONLY
@@ -45,6 +48,7 @@ primary       -> "true" | "false" | "null"
                | "(" expression ")";
 
 arguments     -> expression ( "," expression )* ;
+parameters    -> ( "var" | "const" ) object_decl ( "," ( "var" | "const" ) object_decl )* ;
 
 NUMBER        -> DIGIT+ ( "." DIGIT+ )? ;
 STRING        -> "\"" <any char except "\"">* "\"" ;

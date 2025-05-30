@@ -1,0 +1,13 @@
+# Fix
+
+- [ ] screen symbols doesn't work (\n \t \whatever)
+
+# Optimizations
+
+- [ ] Move `lox::literal` from expression_literal to literal list and keep ID instead;
+- [ ] Move all std::format into lazy format, so it calls only when error has happened;
+
+
+# Other
+
+- [ ] Strong types;

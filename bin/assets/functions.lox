@@ -1,0 +1,9 @@
+
+fun process(var from, var to, var functor{ println }) {
+	for (; from < to; ++from) {
+		functor(from);
+	}
+}
+
+process( 0, 10);
+process(10, 20, print);

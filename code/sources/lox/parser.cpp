@@ -49,45 +49,45 @@ auto parser::storage_declaration(program &prog) -> statement_id {
 }
 
 auto parser::variable_declaration(program &prog) -> statement_id {
-	// var IDENTIFIER[: str][{ expression }];
-
-	auto identifier{ consume(token_type::identifier, "Expected variable name", peek()) };
-
-	expression_id expr_{};
-	if (match<token_type::left_brace>()) {
-		const auto &init_start{ peek() };
-		if (!match<token_type::right_brace>()) {
-			expr_ = expr(prog);
-			consume(token_type::right_brace, "Missed '}' brace during variable initialization",
-				init_start, error_code::pe_broken_symmetry
-			);
-		}
-	}
-
-	match<token_type::semicolon>(); // Skip it if presented. No one cares
-
-	return prog.emplace<statement_type::variable>(identifier, expr_);
+	const auto [name, value]{ object_declaration(prog, "variable") };
+	match<token_type::semicolon>();
+	return prog.emplace<statement_type::variable>(name, value);
 }
 
 auto parser::constant_declaration(program &prog) -> statement_id {
-	auto identifier{ consume(token_type::identifier, "Expected variable name", peek()) };
+	const auto [name, value]{ object_declaration(prog, "constant") };
+	match<token_type::semicolon>();
+	return prog.emplace<statement_type::constant>(name, value);
+}
+
+auto parser::object_declaration(program &prog, std::string_view name) -> std::pair<token, expression_id> {
+	auto identifier{ consume(token_type::identifier, std::format("Expected {}'s name", name), peek()) };
 
 	consume(token_type::left_brace,
-		"Missed initialization braces for constant! Constant have to be initialized",
+		std::format("Missed initialization for {}! It has to be initialized", name),
 		peek(), error_code::pe_missing_const_initialization
 	);
+	/*
+	if (match<token_type::column>()) {
+		var simple: int{ 10 };
+		var harder: decltype(5 + 5){ 10 };
+		var noooo: array<optional<my_class>, 10>{ ... };
+		???
+	}
+	*/
 
 	expression_id expr_{};
 	if (!match<token_type::right_brace>()) {
 		const auto &init_start{ peek() };
 		if (!match<token_type::right_brace>()) {
 			expr_ = expr(prog);
-			consume(token_type::right_brace, "Missed '}' brace during variable initialization",
+			consume(token_type::right_brace,
+				std::format("Missed '}}' brace during {} initialization", name),
 				init_start, error_code::pe_broken_symmetry
 			);
 		} else {
 			// INITIALIZE USING TYPE!
-			make_error("Missed initialization value for constant!",
+			make_error(std::format("Missed initialization value for {}!", name),
 				error_code::pe_missing_const_initialization, init_start
 			);
 		}
@@ -95,10 +95,9 @@ auto parser::constant_declaration(program &prog) -> statement_id {
 		expr_ = prog.emplace<expression_type::literal>(null_literal);
 	}
 
-	match<token_type::semicolon>();
-
-	return prog.emplace<statement_type::constant>(identifier, expr_);
+	return std::make_pair(identifier, expr_);
 }
+
 
 auto parser::stmt(program &prog) -> statement_id {
 	if (match<token_type::kw_if>()) {

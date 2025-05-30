@@ -29,6 +29,8 @@ private:
 	auto variable_declaration(program &out) -> statement_id;
 	auto constant_declaration(program &out) -> statement_id;
 
+	auto object_declaration(program &out, std::string_view name) -> std::pair<token, expression_id>;
+
 	auto stmt(program &out) -> statement_id;
 	auto branch_stmt(program &out) -> statement_id;
 	auto loop_stmt(program &out) -> statement_id;
