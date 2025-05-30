@@ -4,42 +4,42 @@ const start{ time() };
 const lhv{ 10 };
 const rhv{ 5 };
 
-print "-------------- full if test --------------";
+println("-------------- full if test --------------");
 if (const sum{ lhv + rhv }; sum == 15) {
-	print "HELL YEAH!";
-	print sum;
+	println("HELL YEAH!");
+	println(sum);
 } else {
-	print "o_O";
+	println("o_O");
 }
 
-print "------------ full if wo/ init ------------";
+println("------------ full if wo/ init ------------");
 
 if (lhv != rhv) {
-	print "they aren't equal";
+	println("they aren't equal");
 }
 
-print "-------------- full if else --------------";
+println("-------------- full if else --------------");
 
 if (false and true) { } else {
-	print "OMG!";
+	println("OMG!");
 }
 
 
 while (var counter{ 5 }; counter != 0) {
 	counter = counter - 1;
-	print counter;
+	println(counter);
 }
 
-print "";
+println("");
 
 var counter{ 5 };
 while (counter != 0) {
-	print 5 - counter;
+	println(5 - counter);
 	counter -= 1;
 }
 
 for (var i{ 0 }; i < 5; ++i) {
-	print i;
+	println(i);
 }
 
 var lol{ 10 };

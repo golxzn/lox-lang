@@ -6,8 +6,8 @@ fun sum(var lhv, var rhv) {
 var integer_test = 10;
 var double_test = 10.00;
 var language_variable = "lox;
-print language_variable;#;
-print sum(integer_test, double_test);
+println(language_variable);#;
+println(sum(integer_test, double_test));
 /*
 and multi-line comments
 too !!!

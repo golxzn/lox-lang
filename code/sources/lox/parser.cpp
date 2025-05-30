@@ -104,11 +104,6 @@ auto parser::stmt(program &prog) -> statement_id {
 	if (match<token_type::kw_if>()) {
 		return branch_stmt(prog);
 	}
-#if defined(LOX_DEBUG)
-	if (match<token_type::kw_print>()) {
-		return make_stmt<statement_type::print>(prog, &parser::expr);
-	}
-#endif // defined(LOX_DEBUG)
 	if (match<token_type::kw_while>()) {
 		return loop_stmt(prog);
 	}

@@ -435,19 +435,6 @@ void interpreter::accept(const statement_loop &loop) {
 	}
 }
 
-#if defined(LOX_DEBUG)
-
-void interpreter::accept(const statement_print &print) {
-	if (!std::empty(print.expr)) {
-		std::fprintf(stdout, "%s\n", std::data(lox::to_string(evaluate(print.expr))));
-	} else {
-		error(error_code::ee_missing_expression, "");
-	}
-}
-
-#endif // defined(LOX_DEBUG)
-
-
 #pragma endregion statement::visitor_interface methods
 
 void interpreter::execute_block(const program::statement_list &statements) {

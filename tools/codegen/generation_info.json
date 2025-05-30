@@ -26,8 +26,7 @@
 		"branch"         : "expression_id condition, statement_id then_branch, statement_id else_branch",
 		"variable"       : "token identifier, expression_id initializer",
 		"constant"       : "token identifier, expression_id initializer",
-		"loop"           : "expression_id condition, statement_id body",
-		"LOX_DEBUG!print": "expression_id expr"
+		"loop"           : "expression_id condition, statement_id body"
 	},
 	"statement_includes": [
 		"<vector>",

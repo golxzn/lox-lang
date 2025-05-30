@@ -11,8 +11,8 @@ var null_test = null;
 var false_boolean_test = false;
 var true_boolean_test = true;
 
-print language_variable;
-print sum(integer_test, double_test);
+println(language_variable);
+println(sum(integer_test, double_test));
 /*
 and multi-line comments
 too !!!

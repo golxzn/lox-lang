@@ -65,10 +65,6 @@ public:
 	void accept(const statement_constant &con) override;
 	void accept(const statement_loop &loop) override;
 
-#if defined(LOX_DEBUG)
-	void accept(const statement_print &print) override;
-#endif // defined(LOX_DEBUG)
-
 #pragma endregion statement::visitor_interface methods
 
 

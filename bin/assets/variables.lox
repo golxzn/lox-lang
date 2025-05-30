@@ -5,25 +5,25 @@ const rhv{ " world" };
 	const lhv{ "Test" };
 	var rhv{};
 	rhv = " scope";
-	print lhv + rhv;
+	println(lhv + rhv);
 }
 
 { // local & global test
 	const lhv{ "Inner" };
-	print lhv + rhv; // Expecting "Inner world"
+	println(lhv + rhv); // Expecting "Inner world"
 }
 
 { // arithmetics
-	print 100 * 12 + 4 > 5;
+	println(100 * 12 + 4 > 5);
 }
 
 var same{ 1 };
 {
 	var same{ same + 1 };
-	print same;
+	println(same);
 }
 
-print lhv + rhv;
+println(lhv + rhv);
 
 lhv = "destroy";
-print lhv + rhv;
+println(lhv + rhv);
