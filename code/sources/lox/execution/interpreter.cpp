@@ -213,6 +213,9 @@ auto interpreter::accept(const expression_call &call) -> literal {
 		params[i] = evaluate(call.args[i]);
 	}
 
+	m_env.push_scope();
+	/// @todo aw shit. But there's no plans on this project anyway lol.
+	std::shared_ptr<void> defer{ nullptr, [&env{ m_env }](...){ env.pop_scope(); } };
 	return function->call(this, std::move(params));
 }
 
@@ -371,6 +374,22 @@ void interpreter::accept(const statement_expression &expr) {
 	} else {
 		error(error_code::ee_missing_expression, "");
 	}
+}
+
+void interpreter::accept(const statement_function &func) {
+	m_env.register_function(func.name.lexeme_id, function{ [this, func](void *, std::span<const literal> args) {
+		for (size_t i{}; i < std::size(args); ++i) {
+			m_env.define_variable(func.params[i].lexeme_id, args[i]);
+		}
+
+		try {
+			execute(func.body);
+		} catch (literal output) {
+			return output;
+		}
+
+		return null_literal;
+	}, std::size(func.params) });
 }
 
 void interpreter::accept(const statement_branch &branch) {

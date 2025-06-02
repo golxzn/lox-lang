@@ -8,7 +8,7 @@
 
 namespace lox {
 
-enum class token_type : uint8_t {
+enum class token_type : uint32_t {
 	invalid,
 
 	// Single character tokens
@@ -33,10 +33,6 @@ enum class token_type : uint8_t {
 	kw_var, kw_const,
 	kw_and, kw_or, kw_if, kw_else, kw_while, kw_for,
 	kw_fun, kw_return, kw_class, kw_this, kw_super,
-
-#if defined(LOX_DEBUG)
-	kw_print,
-#endif // defined(LOX_DEBUG)
 
 	end_of_file = 0xFFu
 };
@@ -79,10 +75,6 @@ struct LOX_EXPORT token {
 		case kw_class:      return "class"sv;
 		case kw_this:       return "this"sv;
 		case kw_super:      return "super"sv;
-
-#if defined(LOX_DEBUG)
-		case kw_print:      return "print"sv;
-#endif // defined(LOX_DEBUG)
 
 		default:
 			break;

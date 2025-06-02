@@ -26,7 +26,7 @@ auto fn_print_impl(void *, std::span<const literal> args) -> literal {
 			case null:     std::fprintf(stdout, "null");
 			case boolean:  std::fprintf(stdout, (std::get<bool>(arg) ? "true" : "false")); break;
 			case number:   std::fprintf(stdout, "%f", std::get<double>(arg)); break;
-			case integral: std::fprintf(stdout, "%d", std::get<int64_t>(arg)); break;
+			case integral: std::fprintf(stdout, "%lld", std::get<int64_t>(arg)); break;
 			case string:   std::fprintf(stdout, "%s", std::data(std::get<std::string>(arg))); break;
 
 			default: break;

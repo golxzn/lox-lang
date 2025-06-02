@@ -1,9 +1,8 @@
 
-fun process(var from, var to, var functor{ println }) {
-	for (; from < to; ++from) {
-		functor(from);
-	}
+fun print_sum(a, b, caller) {
+	caller("Sum ", a, " + ", b, " == ", a + b);
 }
 
-process( 0, 10);
-process(10, 20, print);
+print_sum(10, 15, println);
+print_sum(1, 2, print);
+print(" NO NEW LINE YA");

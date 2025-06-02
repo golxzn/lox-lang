@@ -25,6 +25,7 @@ private:
 	size_t m_current{};
 
 	auto declaration(program &out) -> statement_id;
+	auto function_declaration(program &out, std::string_view kind) -> statement_id;
 	auto storage_declaration(program &out) -> statement_id;
 	auto variable_declaration(program &out) -> statement_id;
 	auto constant_declaration(program &out) -> statement_id;

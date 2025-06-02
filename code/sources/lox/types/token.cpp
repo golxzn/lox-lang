@@ -26,10 +26,6 @@ auto from_keyword(const std::string_view name) noexcept -> token_type {
 		case "this"_fnv1a:   return kw_this;
 		case "super"_fnv1a:  return kw_super;
 
-#if defined(LOX_DEBUG)
-		case "print"_fnv1a:  return kw_print;
-#endif // defined(LOX_DEBUG)
-
 		default: break;
 	}
 

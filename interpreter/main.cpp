@@ -51,7 +51,7 @@ auto evaluate(const std::string_view file_path, const std::string_view script) -
 		errout.clear();
 	}
 
-	// std::printf("\n----------------------- EXECUTION -----------------------\n\n");
+	std::printf("\n----------------------- EXECUTION -----------------------\n\n");
 
 	lox::execution::environment env{};
 	lox::native::add_native_functions(ctx.lexemes, env);

@@ -23,6 +23,7 @@
 	"statements": {
 		"scope"          : "std::vector<statement_id> statements",
 		"expression"     : "expression_id expr",
+		"function"       : "token name, std::vector<token> params, statement_id body",
 		"branch"         : "expression_id condition, statement_id then_branch, statement_id else_branch",
 		"variable"       : "token identifier, expression_id initializer",
 		"constant"       : "token identifier, expression_id initializer",

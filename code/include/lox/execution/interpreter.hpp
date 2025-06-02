@@ -60,6 +60,7 @@ public:
 
 	void accept(const statement_scope &scope) override;
 	void accept(const statement_expression &expr) override;
+	void accept(const statement_function &func) override;
 	void accept(const statement_branch &branch) override;
 	void accept(const statement_variable &var) override;
 	void accept(const statement_constant &con) override;

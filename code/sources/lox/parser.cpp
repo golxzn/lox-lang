@@ -26,6 +26,10 @@ auto parser::parse() -> program {
 
 auto parser::declaration(program &prog) -> statement_id {
 	try {
+		if (match<token_type::kw_fun>()) {
+			return function_declaration(prog, "function");
+		}
+
 		if (auto storage{ storage_declaration(prog) }; !std::empty(storage)) {
 			return storage;
 		}
@@ -36,6 +40,36 @@ auto parser::declaration(program &prog) -> statement_id {
 	}
 
 	return statement_id{};
+}
+
+auto parser::function_declaration(program &prog, std::string_view kind) -> statement_id {
+	using enum token_type;
+
+	// @todo think about `const sum: (int, int): int = fun(var a: int, var b: int): int {}
+	const auto name{ consume(identifier, std::format("Expected {} name.", kind), peek()) };
+	consume(left_paren, std::format("Exprected '(' after {} name.", kind), peek());
+
+	std::vector<token> parameters{};
+	if (!check(right_paren)) {
+		bool many_args_logged{ false };
+		do {
+			if (!many_args_logged && std::size(parameters) > constants::max_call_stack_depth) {
+				make_error(std::format("Too many parameters for {}!", kind),
+					error_code::pe_too_many_arguments, peek()
+				);
+				many_args_logged = true;
+			}
+
+			parameters.emplace_back(consume(identifier, "Expect parameter name.", peek()));
+		} while (match<comma>());
+	}
+
+	consume(right_paren, std::format("Exprected ')' after {} parameters.", kind), peek(),
+		error_code::pe_broken_symmetry
+	);
+
+	consume(left_brace, std::format("Expected '{{' after {} declaration", kind), peek());
+	return prog.emplace<statement_type::function>(name, std::move(parameters), scope_stmt(prog));
 }
 
 auto parser::storage_declaration(program &prog) -> statement_id {
